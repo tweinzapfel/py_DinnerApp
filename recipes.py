@@ -52,17 +52,59 @@ with tab1:
         ["Easy", "Medium", "Hard"]
     )
 
-    # Vegetarian checkbox
-    vegetarian = st.checkbox("Should it be vegetarian?")
+    # Dietary restrictions
+    st.subheader("Dietary Preferences")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        vegetarian = st.checkbox("Vegetarian")
+        vegan = st.checkbox("Vegan")
+        gluten_free = st.checkbox("Gluten-free")
+        dairy_free = st.checkbox("Dairy-free")
+    
+    with col2:
+        keto = st.checkbox("Keto")
+        paleo = st.checkbox("Paleo")
+        low_carb = st.checkbox("Low-carb")
+        low_sodium = st.checkbox("Low-sodium")
+    
+    # Allergy restrictions
+    allergies = st.multiselect(
+        "Any food allergies to avoid?",
+        ["Nuts", "Shellfish", "Eggs", "Soy", "Fish", "Sesame", "Other"]
+    )
+    
+    # Portion size
+    portion_size = st.selectbox(
+        "How many servings?",
+        ["1 person", "2 people", "3-4 people (family)", "5-6 people", "Large group (8+ people)"]
+    )
 
     # Special instructions
-    instructions = st.text_input("Any special instructions or preferences?")
+    instructions = st.text_input("Any other special instructions or preferences?")
 
     # Submit button
     if st.button("Suggest Recipe", key="cuisine_recipe"):
-        prompt = f"Suggest a {complexity.lower()} {cuisine.lower()} dinner recipe"
-        if vegetarian:
-            prompt += " that is vegetarian"
+        # Build dietary restrictions list
+        dietary_restrictions = []
+        if vegetarian: dietary_restrictions.append("vegetarian")
+        if vegan: dietary_restrictions.append("vegan")
+        if gluten_free: dietary_restrictions.append("gluten-free")
+        if dairy_free: dietary_restrictions.append("dairy-free")
+        if keto: dietary_restrictions.append("keto")
+        if paleo: dietary_restrictions.append("paleo")
+        if low_carb: dietary_restrictions.append("low-carb")
+        if low_sodium: dietary_restrictions.append("low-sodium")
+        
+        prompt = f"Suggest a {complexity.lower()} {cuisine.lower()} dinner recipe for {portion_size}"
+        
+        if dietary_restrictions:
+            prompt += f" that is {', '.join(dietary_restrictions)}"
+        
+        if allergies:
+            allergy_list = ', '.join([allergy.lower() for allergy in allergies])
+            prompt += f". Avoid these allergens: {allergy_list}"
+        
         if instructions:
             prompt += f". Also, consider this: {instructions}"
         prompt += ". Include ingredients and step-by-step instructions."
@@ -93,6 +135,7 @@ with tab2:
     )
     
     # Additional preferences for fridge mode
+    st.subheader("Preferences")
     col1, col2 = st.columns(2)
     
     with col1:
@@ -101,21 +144,46 @@ with tab2:
             ["Easy", "Medium", "Hard"],
             key="fridge_complexity"
         )
+        
+        fridge_portion_size = st.selectbox(
+            "How many servings?",
+            ["1 person", "2 people", "3-4 people (family)", "5-6 people", "Large group (8+ people)"],
+            key="fridge_portion_size"
+        )
     
     with col2:
-        fridge_vegetarian = st.checkbox("Vegetarian only?", key="fridge_vegetarian")
+        cooking_time = st.selectbox(
+            "How much time do you have?",
+            ["Quick (under 30 min)", "Medium (30-60 min)", "I have time (60+ min)"]
+        )
+        
+        allow_additional = st.checkbox(
+            "Allow recipes that need a few additional common ingredients?",
+            value=True,
+            help="If checked, recipes may include common pantry items you might not have listed"
+        )
     
-    # Cooking time preference
-    cooking_time = st.selectbox(
-        "How much time do you have?",
-        ["Quick (under 30 min)", "Medium (30-60 min)", "I have time (60+ min)"]
-    )
+    # Dietary restrictions for fridge mode
+    st.subheader("Dietary Preferences")
+    col3, col4 = st.columns(2)
     
-    # Additional ingredients option
-    allow_additional = st.checkbox(
-        "Allow recipes that need a few additional common ingredients?",
-        value=True,
-        help="If checked, recipes may include common pantry items you might not have listed"
+    with col3:
+        fridge_vegetarian = st.checkbox("Vegetarian", key="fridge_vegetarian")
+        fridge_vegan = st.checkbox("Vegan", key="fridge_vegan")
+        fridge_gluten_free = st.checkbox("Gluten-free", key="fridge_gluten_free")
+        fridge_dairy_free = st.checkbox("Dairy-free", key="fridge_dairy_free")
+    
+    with col4:
+        fridge_keto = st.checkbox("Keto", key="fridge_keto")
+        fridge_paleo = st.checkbox("Paleo", key="fridge_paleo")
+        fridge_low_carb = st.checkbox("Low-carb", key="fridge_low_carb")
+        fridge_low_sodium = st.checkbox("Low-sodium", key="fridge_low_sodium")
+    
+    # Allergy restrictions for fridge mode
+    fridge_allergies = st.multiselect(
+        "Any food allergies to avoid?",
+        ["Nuts", "Shellfish", "Eggs", "Soy", "Fish", "Sesame", "Other"],
+        key="fridge_allergies"
     )
     
     # Special dietary restrictions or preferences
@@ -136,11 +204,26 @@ with tab2:
                 "I have time (60+ min)": "can take longer to prepare, 60+ minutes"
             }
             
-            prompt = f"I have these ingredients available: {fridge_items}. "
-            prompt += f"Please suggest a {fridge_complexity.lower()} dinner recipe that is {time_mapping[cooking_time]}"
+            # Build dietary restrictions list for fridge mode
+            fridge_dietary_restrictions = []
+            if fridge_vegetarian: fridge_dietary_restrictions.append("vegetarian")
+            if fridge_vegan: fridge_dietary_restrictions.append("vegan")
+            if fridge_gluten_free: fridge_dietary_restrictions.append("gluten-free")
+            if fridge_dairy_free: fridge_dietary_restrictions.append("dairy-free")
+            if fridge_keto: fridge_dietary_restrictions.append("keto")
+            if fridge_paleo: fridge_dietary_restrictions.append("paleo")
+            if fridge_low_carb: fridge_dietary_restrictions.append("low-carb")
+            if fridge_low_sodium: fridge_dietary_restrictions.append("low-sodium")
             
-            if fridge_vegetarian:
-                prompt += " and vegetarian"
+            prompt = f"I have these ingredients available: {fridge_items}. "
+            prompt += f"Please suggest a {fridge_complexity.lower()} dinner recipe for {fridge_portion_size} that is {time_mapping[cooking_time]}"
+            
+            if fridge_dietary_restrictions:
+                prompt += f" and {', '.join(fridge_dietary_restrictions)}"
+            
+            if fridge_allergies:
+                fridge_allergy_list = ', '.join([allergy.lower() for allergy in fridge_allergies])
+                prompt += f". Avoid these allergens: {fridge_allergy_list}"
             
             if allow_additional:
                 prompt += ". You can suggest recipes that use most of these ingredients and may require a few common pantry staples (like oil, salt, pepper, basic spices) that most people have."
