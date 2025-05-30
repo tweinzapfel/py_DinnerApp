@@ -82,11 +82,13 @@ if submitted:
     }
     with st.spinner("Asking the chef…"):
         try:
-            response = requests.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers=headers,
-                json=payload
-            )
+            response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a helpful chef assistant."},
+                {"role": "user", "content": prompt}
+            ]
+        )
             response.raise_for_status()
             data = response.json()
             recipe = data["choices"][0]["message"]["content"].strip()
