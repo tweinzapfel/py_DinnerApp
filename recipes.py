@@ -1,6 +1,7 @@
 import streamlit as st
 from openai import OpenAI
 import os
+import requests
 
 headers = {
     "authorization": st.secrets["api_key"],
