@@ -46,11 +46,31 @@ with tab1:
     ]
     )
 
-    # Complexity dropdown
-    complexity = st.selectbox(
-        "Select cooking complexity:",
-        ["Easy", "Medium", "Hard"]
-    )
+    # Meal type and cooking preferences
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        meal_type = st.selectbox(
+            "What type of meal?",
+            ["Dinner", "Lunch", "Breakfast/Brunch", "Appetizer", "Snack", "Dessert", "Side Dish"]
+        )
+        
+        complexity = st.selectbox(
+            "Select cooking complexity:",
+            ["Easy", "Medium", "Hard"]
+        )
+    
+    with col2:
+        cooking_method = st.selectbox(
+            "Preferred cooking method:",
+            ["Any method", "One-pot/One-pan", "Slow cooker", "Air fryer", "Instant Pot/Pressure cooker", 
+             "Oven/Baking", "Stovetop", "Grilling", "No-cook/Raw", "Microwave"]
+        )
+        
+        portion_size = st.selectbox(
+            "How many servings?",
+            ["1 person", "2 people", "3-4 people (family)", "5-6 people", "Large group (8+ people)"]
+        )
 
     # Dietary restrictions
     st.subheader("Dietary Preferences")
@@ -74,11 +94,7 @@ with tab1:
         ["Nuts", "Shellfish", "Eggs", "Soy", "Fish", "Sesame", "Other"]
     )
     
-    # Portion size
-    portion_size = st.selectbox(
-        "How many servings?",
-        ["1 person", "2 people", "3-4 people (family)", "5-6 people", "Large group (8+ people)"]
-    )
+
 
     # Special instructions
     instructions = st.text_input("Any other special instructions or preferences?")
@@ -96,7 +112,21 @@ with tab1:
         if low_carb: dietary_restrictions.append("low-carb")
         if low_sodium: dietary_restrictions.append("low-sodium")
         
-        prompt = f"Suggest a {complexity.lower()} {cuisine.lower()} dinner recipe for {portion_size}"
+        prompt = f"Suggest a {complexity.lower()} {cuisine.lower()} {meal_type.lower()} recipe for {portion_size}"
+        
+        if cooking_method != "Any method":
+            method_mapping = {
+                "One-pot/One-pan": "one-pot or one-pan",
+                "Slow cooker": "slow cooker",
+                "Air fryer": "air fryer",
+                "Instant Pot/Pressure cooker": "Instant Pot or pressure cooker",
+                "Oven/Baking": "oven-baked",
+                "Stovetop": "stovetop",
+                "Grilling": "grilled",
+                "No-cook/Raw": "no-cook",
+                "Microwave": "microwave"
+            }
+            prompt += f" using {method_mapping[cooking_method]}"
         
         if dietary_restrictions:
             prompt += f" that is {', '.join(dietary_restrictions)}"
@@ -136,13 +166,28 @@ with tab2:
     
     # Additional preferences for fridge mode
     st.subheader("Preferences")
+    # Meal type and cooking preferences for fridge mode
     col1, col2 = st.columns(2)
     
     with col1:
+        fridge_meal_type = st.selectbox(
+            "What type of meal?",
+            ["Dinner", "Lunch", "Breakfast/Brunch", "Appetizer", "Snack", "Dessert", "Side Dish"],
+            key="fridge_meal_type"
+        )
+        
         fridge_complexity = st.selectbox(
             "Cooking complexity:",
             ["Easy", "Medium", "Hard"],
             key="fridge_complexity"
+        )
+    
+    with col2:
+        fridge_cooking_method = st.selectbox(
+            "Preferred cooking method:",
+            ["Any method", "One-pot/One-pan", "Slow cooker", "Air fryer", "Instant Pot/Pressure cooker", 
+             "Oven/Baking", "Stovetop", "Grilling", "No-cook/Raw", "Microwave"],
+            key="fridge_cooking_method"
         )
         
         fridge_portion_size = st.selectbox(
@@ -150,13 +195,16 @@ with tab2:
             ["1 person", "2 people", "3-4 people (family)", "5-6 people", "Large group (8+ people)"],
             key="fridge_portion_size"
         )
+    # Time and ingredient preferences
+    col3, col4 = st.columns(2)
     
-    with col2:
+    with col3:
         cooking_time = st.selectbox(
             "How much time do you have?",
             ["Quick (under 30 min)", "Medium (30-60 min)", "I have time (60+ min)"]
         )
-        
+    
+    with col4:
         allow_additional = st.checkbox(
             "Allow recipes that need a few additional common ingredients?",
             value=True,
@@ -216,7 +264,21 @@ with tab2:
             if fridge_low_sodium: fridge_dietary_restrictions.append("low-sodium")
             
             prompt = f"I have these ingredients available: {fridge_items}. "
-            prompt += f"Please suggest a {fridge_complexity.lower()} dinner recipe for {fridge_portion_size} that is {time_mapping[cooking_time]}"
+            prompt += f"Please suggest a {fridge_complexity.lower()} {fridge_meal_type.lower()} recipe for {fridge_portion_size} that is {time_mapping[cooking_time]}"
+            
+            if fridge_cooking_method != "Any method":
+                method_mapping = {
+                    "One-pot/One-pan": "one-pot or one-pan",
+                    "Slow cooker": "slow cooker",
+                    "Air fryer": "air fryer",
+                    "Instant Pot/Pressure cooker": "Instant Pot or pressure cooker",
+                    "Oven/Baking": "oven-baked",
+                    "Stovetop": "stovetop",
+                    "Grilling": "grilled",
+                    "No-cook/Raw": "no-cook",
+                    "Microwave": "microwave"
+                }
+                prompt += f" using {method_mapping[fridge_cooking_method]}"
             
             if fridge_dietary_restrictions:
                 prompt += f" and {', '.join(fridge_dietary_restrictions)}"
