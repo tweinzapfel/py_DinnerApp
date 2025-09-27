@@ -19,6 +19,54 @@ def encode_image(image):
     image.save(buffered, format="JPEG")
     return base64.b64encode(buffered.getvalue()).decode()
 
+# Function to generate shopping list from recipe
+def generate_shopping_list(recipe_text, available_ingredients=""):
+    try:
+        prompt = f"""
+        Based on this recipe: {recipe_text}
+        
+        {"And these ingredients I already have: " + available_ingredients if available_ingredients else ""}
+        
+        Please create a smart shopping list by:
+        1. Extracting all ingredients from the recipe with quantities
+        2. {"Separating what I already have vs. what I need to buy" if available_ingredients else "Listing all ingredients I need to buy"}
+        3. Organizing by grocery store sections (Produce, Meat/Seafood, Dairy, Pantry, etc.)
+        4. Including estimated quantities where specified in the recipe
+        
+        Format as:
+        **SHOPPING LIST**
+        
+        **Produce:**
+        - item (quantity)
+        
+        **Meat/Seafood:**
+        - item (quantity)
+        
+        **Dairy:**
+        - item (quantity)
+        
+        **Pantry/Dry Goods:**
+        - item (quantity)
+        
+        **Other:**
+        - item (quantity)
+        
+        {"**✅ Items you already have:**" + chr(10) + "- (list items from available ingredients that are used in recipe)" if available_ingredients else ""}
+        
+        Only include items that need to be purchased. Be specific about quantities when mentioned in the recipe.
+        """
+        
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a helpful shopping assistant who creates organized grocery lists from recipes."},
+                {"role": "user", "content": prompt}
+            ]
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"Error generating shopping list: {e}"
+
 # Streamlit UI
 st.title("Dinner Recipe Maker")
 
@@ -156,7 +204,16 @@ with tab1:
                 ]
             )
             st.markdown("### Suggested Recipe")
-            st.write(response.choices[0].message.content)
+            recipe_content = response.choices[0].message.content
+            st.write(recipe_content)
+            
+            # Add shopping list generation
+            st.markdown("---")
+            if st.button("🛒 Generate Shopping List", key="cuisine_shopping_list"):
+                with st.spinner("Creating your shopping list..."):
+                    shopping_list = generate_shopping_list(recipe_content)
+                    st.markdown("### 🛒 Smart Shopping List")
+                    st.write(shopping_list)
         except Exception as e:
             st.error(f"An error occurred: {e}")
 
@@ -314,7 +371,16 @@ with tab2:
                     ]
                 )
                 st.markdown("### Recipe Based on Your Ingredients")
-                st.write(response.choices[0].message.content)
+                recipe_content = response.choices[0].message.content
+                st.write(recipe_content)
+                
+                # Add shopping list generation for fridge recipes
+                st.markdown("---")
+                if st.button("🛒 Generate Shopping List", key="fridge_shopping_list"):
+                    with st.spinner("Creating your shopping list..."):
+                        shopping_list = generate_shopping_list(recipe_content, fridge_items)
+                        st.markdown("### 🛒 Smart Shopping List")
+                        st.write(shopping_list)
             except Exception as e:
                 st.error(f"An error occurred: {e}")
 
@@ -533,7 +599,16 @@ with tab3:
                             ]
                         )
                         st.markdown("### 📸 Recipe Based on Your Photo")
-                        st.write(response.choices[0].message.content)
+                        recipe_content = response.choices[0].message.content
+                        st.write(recipe_content)
+                        
+                        # Add shopping list generation for photo recipes
+                        st.markdown("---")
+                        if st.button("🛒 Generate Shopping List", key="photo_shopping_list"):
+                            with st.spinner("Creating your shopping list..."):
+                                shopping_list = generate_shopping_list(recipe_content, photo_ingredients)
+                                st.markdown("### 🛒 Smart Shopping List")
+                                st.write(shopping_list)
                 except Exception as e:
                     st.error(f"An error occurred while generating the recipe: {e}")
     
