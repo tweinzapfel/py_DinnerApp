@@ -1,6 +1,9 @@
 import streamlit as st
 from openai import OpenAI
 import os
+import base64
+from PIL import Image
+import io
 
 headers = {
     "authorization": st.secrets["api_key"],
@@ -10,11 +13,17 @@ headers = {
 # Set your OpenAI API key (make sure it's in your environment variables or you can paste it here for testing)
 client = OpenAI(api_key=st.secrets["api_key"])
 
+# Function to encode image to base64
+def encode_image(image):
+    buffered = io.BytesIO()
+    image.save(buffered, format="JPEG")
+    return base64.b64encode(buffered.getvalue()).decode()
+
 # Streamlit UI
 st.title("Dinner Recipe Maker")
 
 # Add tabs for different recipe modes
-tab1, tab2 = st.tabs(["Recipe by Cuisine", "Recipe by Fridge Items"])
+tab1, tab2, tab3 = st.tabs(["Recipe by Cuisine", "Recipe by Fridge Items", "Photo Recipe Finder"])
 
 with tab1:
     st.header("Find Recipe by Cuisine & Preferences")
@@ -94,8 +103,6 @@ with tab1:
         ["Nuts", "Shellfish", "Eggs", "Soy", "Fish", "Sesame", "Other"]
     )
     
-
-
     # Special instructions
     instructions = st.text_input("Any other special instructions or preferences?")
 
@@ -310,3 +317,232 @@ with tab2:
                 st.write(response.choices[0].message.content)
             except Exception as e:
                 st.error(f"An error occurred: {e}")
+
+with tab3:
+    st.header("Photo Recipe Finder")
+    st.write("Take a photo of your fridge, pantry, or ingredients and I'll identify what you have and suggest recipes!")
+    
+    # Camera input
+    camera_photo = st.camera_input("Take a photo of your ingredients")
+    
+    # Initialize session state for identified ingredients
+    if 'identified_ingredients' not in st.session_state:
+        st.session_state.identified_ingredients = ""
+    
+    if camera_photo is not None:
+        # Display the photo
+        st.image(camera_photo, caption="Your ingredient photo", width=300)
+        
+        # Button to analyze the photo
+        if st.button("🔍 Identify Ingredients in Photo", key="analyze_photo"):
+            with st.spinner("Analyzing your photo..."):
+                try:
+                    # Convert the image to PIL format
+                    image = Image.open(camera_photo)
+                    
+                    # Encode image to base64
+                    base64_image = encode_image(image)
+                    
+                    # Make request to OpenAI Vision API
+                    response = client.chat.completions.create(
+                        model="gpt-4-vision-preview",
+                        messages=[
+                            {
+                                "role": "user",
+                                "content": [
+                                    {
+                                        "type": "text",
+                                        "text": "Please identify all the food ingredients, items, and products you can see in this image. List them as a comma-separated list. Focus on ingredients that could be used for cooking. Include fresh produce, packaged goods, dairy products, meats, spices, condiments, etc. Be specific about types (e.g., 'red bell peppers' instead of just 'peppers'). Only list food items that are clearly visible and identifiable."
+                                    },
+                                    {
+                                        "type": "image_url",
+                                        "image_url": {
+                                            "url": f"data:image/jpeg;base64,{base64_image}"
+                                        }
+                                    }
+                                ]
+                            }
+                        ],
+                        max_tokens=500
+                    )
+                    
+                    # Store identified ingredients in session state
+                    st.session_state.identified_ingredients = response.choices[0].message.content
+                    
+                    st.success("✅ Ingredients identified!")
+                    
+                except Exception as e:
+                    st.error(f"Error analyzing image: {e}")
+    
+    # Display and allow editing of identified ingredients
+    if st.session_state.identified_ingredients:
+        st.subheader("📝 Identified Ingredients")
+        
+        # Editable text area with identified ingredients
+        photo_ingredients = st.text_area(
+            "Review and edit the ingredients I found:",
+            value=st.session_state.identified_ingredients,
+            height=120,
+            help="You can add, remove, or modify any ingredients before generating a recipe"
+        )
+        
+        # Recipe preferences for photo mode
+        st.subheader("Recipe Preferences")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            photo_meal_type = st.selectbox(
+                "What type of meal?",
+                ["Dinner", "Lunch", "Breakfast/Brunch", "Appetizer", "Snack", "Dessert", "Side Dish"],
+                key="photo_meal_type"
+            )
+            
+            photo_complexity = st.selectbox(
+                "Cooking complexity:",
+                ["Easy", "Medium", "Hard"],
+                key="photo_complexity"
+            )
+        
+        with col2:
+            photo_cooking_method = st.selectbox(
+                "Preferred cooking method:",
+                ["Any method", "One-pot/One-pan", "Slow cooker", "Air fryer", "Instant Pot/Pressure cooker", 
+                 "Oven/Baking", "Stovetop", "Grilling", "No-cook/Raw", "Microwave"],
+                key="photo_cooking_method"
+            )
+            
+            photo_portion_size = st.selectbox(
+                "How many servings?",
+                ["1 person", "2 people", "3-4 people (family)", "5-6 people", "Large group (8+ people)"],
+                key="photo_portion_size"
+            )
+        
+        # Time and additional ingredients
+        col3, col4 = st.columns(2)
+        
+        with col3:
+            photo_cooking_time = st.selectbox(
+                "How much time do you have?",
+                ["Quick (under 30 min)", "Medium (30-60 min)", "I have time (60+ min)"],
+                key="photo_cooking_time"
+            )
+        
+        with col4:
+            photo_allow_additional = st.checkbox(
+                "Allow recipes that need a few additional common ingredients?",
+                value=True,
+                key="photo_allow_additional",
+                help="If checked, recipes may include common pantry items you might not have"
+            )
+        
+        # Dietary restrictions for photo mode
+        st.subheader("Dietary Preferences")
+        col5, col6 = st.columns(2)
+        
+        with col5:
+            photo_vegetarian = st.checkbox("Vegetarian", key="photo_vegetarian")
+            photo_vegan = st.checkbox("Vegan", key="photo_vegan")
+            photo_gluten_free = st.checkbox("Gluten-free", key="photo_gluten_free")
+            photo_dairy_free = st.checkbox("Dairy-free", key="photo_dairy_free")
+        
+        with col6:
+            photo_keto = st.checkbox("Keto", key="photo_keto")
+            photo_paleo = st.checkbox("Paleo", key="photo_paleo")
+            photo_low_carb = st.checkbox("Low-carb", key="photo_low_carb")
+            photo_low_sodium = st.checkbox("Low-sodium", key="photo_low_sodium")
+        
+        # Allergy restrictions for photo mode
+        photo_allergies = st.multiselect(
+            "Any food allergies to avoid?",
+            ["Nuts", "Shellfish", "Eggs", "Soy", "Fish", "Sesame", "Other"],
+            key="photo_allergies"
+        )
+        
+        # Special instructions for photo mode
+        photo_instructions = st.text_input(
+            "Any special instructions or preferences?",
+            key="photo_instructions"
+        )
+        
+        # Generate recipe button
+        if st.button("🍳 Generate Recipe from Photo", key="photo_recipe"):
+            if not photo_ingredients.strip():
+                st.warning("Please make sure there are ingredients listed above!")
+            else:
+                # Build prompt for photo-based recipe
+                time_mapping = {
+                    "Quick (under 30 min)": "quick and easy, taking less than 30 minutes",
+                    "Medium (30-60 min)": "moderate cooking time, around 30-60 minutes", 
+                    "I have time (60+ min)": "can take longer to prepare, 60+ minutes"
+                }
+                
+                # Build dietary restrictions list for photo mode
+                photo_dietary_restrictions = []
+                if photo_vegetarian: photo_dietary_restrictions.append("vegetarian")
+                if photo_vegan: photo_dietary_restrictions.append("vegan")
+                if photo_gluten_free: photo_dietary_restrictions.append("gluten-free")
+                if photo_dairy_free: photo_dietary_restrictions.append("dairy-free")
+                if photo_keto: photo_dietary_restrictions.append("keto")
+                if photo_paleo: photo_dietary_restrictions.append("paleo")
+                if photo_low_carb: photo_dietary_restrictions.append("low-carb")
+                if photo_low_sodium: photo_dietary_restrictions.append("low-sodium")
+                
+                prompt = f"Based on these ingredients I have from my photo: {photo_ingredients}. "
+                prompt += f"Please suggest a {photo_complexity.lower()} {photo_meal_type.lower()} recipe for {photo_portion_size} that is {time_mapping[photo_cooking_time]}"
+                
+                if photo_cooking_method != "Any method":
+                    method_mapping = {
+                        "One-pot/One-pan": "one-pot or one-pan",
+                        "Slow cooker": "slow cooker",
+                        "Air fryer": "air fryer",
+                        "Instant Pot/Pressure cooker": "Instant Pot or pressure cooker",
+                        "Oven/Baking": "oven-baked",
+                        "Stovetop": "stovetop",
+                        "Grilling": "grilled",
+                        "No-cook/Raw": "no-cook",
+                        "Microwave": "microwave"
+                    }
+                    prompt += f" using {method_mapping[photo_cooking_method]}"
+                
+                if photo_dietary_restrictions:
+                    prompt += f" and {', '.join(photo_dietary_restrictions)}"
+                
+                if photo_allergies:
+                    photo_allergy_list = ', '.join([allergy.lower() for allergy in photo_allergies])
+                    prompt += f". Avoid these allergens: {photo_allergy_list}"
+                
+                if photo_allow_additional:
+                    prompt += ". You can suggest recipes that use most of these ingredients and may require a few common pantry staples (like oil, salt, pepper, basic spices) that most people have."
+                else:
+                    prompt += ". Please try to use primarily the ingredients I've identified from my photo."
+                
+                if photo_instructions:
+                    prompt += f" Also consider: {photo_instructions}"
+                
+                prompt += " Include a complete ingredient list (highlighting what I already have from the photo vs. what I might need to get) and step-by-step cooking instructions."
+
+                # Make request to OpenAI
+                try:
+                    with st.spinner("Creating your recipe..."):
+                        response = client.chat.completions.create(
+                            model="gpt-3.5-turbo",
+                            messages=[
+                                {"role": "system", "content": "You are a helpful chef assistant who specializes in creating recipes based on ingredients identified from photos. Always clearly indicate which ingredients the user already has vs. which they might need to purchase."},
+                                {"role": "user", "content": prompt}
+                            ]
+                        )
+                        st.markdown("### 📸 Recipe Based on Your Photo")
+                        st.write(response.choices[0].message.content)
+                except Exception as e:
+                    st.error(f"An error occurred while generating the recipe: {e}")
+    
+    else:
+        st.info("👆 Take a photo of your ingredients to get started!")
+        st.markdown("""
+        **Tips for better ingredient identification:**
+        - Make sure ingredients are well-lit and clearly visible
+        - Try to capture labels on packaged items
+        - Spread items out so they're not overlapping
+        - Take the photo from a good angle where items are recognizable
+        """)
