@@ -39,6 +39,73 @@ def encode_image(image):
     image.save(buffered, format="JPEG")
     return base64.b64encode(buffered.getvalue()).decode()
 
+# Function to analyze multiple images and identify ingredients
+def analyze_multiple_images(images):
+    """Analyze multiple images and return combined ingredient list"""
+    all_ingredients = []
+    
+    for i, image in enumerate(images):
+        try:
+            # Encode image to base64
+            base64_image = encode_image(image)
+            
+            # Make request to OpenAI Vision API
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": f"This is image {i+1} of {len(images)}. Please identify all the food ingredients, items, and products you can see in this image. List them as a comma-separated list. Focus on ingredients that could be used for cooking. Include fresh produce, packaged goods, dairy products, meats, spices, condiments, etc. Be specific about types (e.g., 'red bell peppers' instead of just 'peppers'). Only list food items that are clearly visible and identifiable."
+                            },
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:image/jpeg;base64,{base64_image}"
+                                }
+                            }
+                        ]
+                    }
+                ],
+                max_tokens=500
+            )
+            
+            ingredients = response.choices[0].message.content
+            all_ingredients.append(ingredients)
+            
+        except Exception as e:
+            st.error(f"Error analyzing image {i+1}: {e}")
+            continue
+    
+    # Combine and deduplicate ingredients
+    if all_ingredients:
+        combined_prompt = f"""
+        I have identified ingredients from {len(images)} different images:
+        
+        {chr(10).join([f"Image {i+1}: {ing}" for i, ing in enumerate(all_ingredients)])}
+        
+        Please combine all these ingredients into a single, deduplicated comma-separated list. 
+        Remove any duplicates and organize similar items together. 
+        Only include actual food ingredients that could be used for cooking.
+        """
+        
+        try:
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant that combines and deduplicates ingredient lists."},
+                    {"role": "user", "content": combined_prompt}
+                ]
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            # Fallback: just join all ingredients if AI combination fails
+            return ", ".join(all_ingredients)
+    
+    return ""
+
 # Function to generate shopping list from recipe
 def generate_shopping_list(recipe_text, available_ingredients=""):
     try:
@@ -428,68 +495,111 @@ with tab2:
 
 with tab3:
     st.header("Photo Recipe Finder")
-    st.write("Take a photo of your fridge, pantry, or ingredients and I'll identify what you have and suggest recipes!")
+    st.write("Take photos or upload images of your fridge, pantry, or ingredients and I'll identify what you have and suggest recipes!")
     
-    # Camera input
-    camera_photo = st.camera_input("Take a photo of your ingredients")
+    # Initialize session state for photos if not exists
+    if 'camera_photos' not in st.session_state:
+        st.session_state.camera_photos = []
+    if 'uploaded_file_photos' not in st.session_state:
+        st.session_state.uploaded_file_photos = []
     
-    # Initialize session state for identified ingredients
-    if 'identified_ingredients' not in st.session_state:
-        st.session_state.identified_ingredients = ""
+    # Create two columns for different photo input methods
+    col1, col2 = st.columns(2)
     
-    if camera_photo is not None:
-        # Display the photo
-        st.image(camera_photo, caption="Your ingredient photo", width=300)
+    with col1:
+        st.subheader("📸 Take Photos")
         
-        # Button to analyze the photo
-        if st.button("🔍 Identify Ingredients in Photo", key="analyze_photo"):
-            with st.spinner("Analyzing your photo..."):
+        # Camera input
+        camera_photo = st.camera_input("Take a photo of your ingredients")
+        
+        if camera_photo is not None:
+            # Add to camera photos list
+            if st.button("➕ Add This Photo", key="add_camera_photo"):
+                # Convert to PIL Image and add to session state
+                image = Image.open(camera_photo)
+                st.session_state.camera_photos.append(image)
+                st.success(f"Photo added! Total camera photos: {len(st.session_state.camera_photos)}")
+        
+        # Display camera photos
+        if st.session_state.camera_photos:
+            st.write(f"**Camera Photos ({len(st.session_state.camera_photos)}):**")
+            for i, img in enumerate(st.session_state.camera_photos):
+                col_img, col_btn = st.columns([3, 1])
+                with col_img:
+                    st.image(img, caption=f"Camera Photo {i+1}", width=200)
+                with col_btn:
+                    if st.button("🗑️", key=f"remove_camera_{i}", help="Remove this photo"):
+                        st.session_state.camera_photos.pop(i)
+                        st.rerun()
+        
+        # Clear all camera photos button
+        if st.session_state.camera_photos:
+            if st.button("🗑️ Clear All Camera Photos", key="clear_camera_photos"):
+                st.session_state.camera_photos = []
+                st.rerun()
+    
+    with col2:
+        st.subheader("📁 Upload Photos")
+        
+        # File uploader for multiple images
+        uploaded_files = st.file_uploader(
+            "Choose image files",
+            type=['png', 'jpg', 'jpeg'],
+            accept_multiple_files=True,
+            key="file_uploader"
+        )
+        
+        if uploaded_files:
+            # Process uploaded files
+            if st.button("➕ Add Uploaded Photos", key="add_uploaded_photos"):
+                for uploaded_file in uploaded_files:
+                    image = Image.open(uploaded_file)
+                    st.session_state.uploaded_file_photos.append(image)
+                st.success(f"Added {len(uploaded_files)} photos! Total uploaded photos: {len(st.session_state.uploaded_file_photos)}")
+        
+        # Display uploaded photos
+        if st.session_state.uploaded_file_photos:
+            st.write(f"**Uploaded Photos ({len(st.session_state.uploaded_file_photos)}):**")
+            for i, img in enumerate(st.session_state.uploaded_file_photos):
+                col_img, col_btn = st.columns([3, 1])
+                with col_img:
+                    st.image(img, caption=f"Uploaded Photo {i+1}", width=200)
+                with col_btn:
+                    if st.button("🗑️", key=f"remove_uploaded_{i}", help="Remove this photo"):
+                        st.session_state.uploaded_file_photos.pop(i)
+                        st.rerun()
+        
+        # Clear all uploaded photos button
+        if st.session_state.uploaded_file_photos:
+            if st.button("🗑️ Clear All Uploaded Photos", key="clear_uploaded_photos"):
+                st.session_state.uploaded_file_photos = []
+                st.rerun()
+    
+    # Combine all photos for analysis
+    all_photos = st.session_state.camera_photos + st.session_state.uploaded_file_photos
+    
+    if all_photos:
+        st.markdown("---")
+        st.write(f"**Total Photos for Analysis: {len(all_photos)}**")
+        
+        # Button to analyze all photos
+        if st.button("🔍 Identify Ingredients in All Photos", key="analyze_all_photos"):
+            with st.spinner(f"Analyzing {len(all_photos)} photos..."):
                 try:
-                    # Convert the image to PIL format
-                    image = Image.open(camera_photo)
-                    
-                    # Encode image to base64
-                    base64_image = encode_image(image)
-                    
-                    # Make request to OpenAI Vision API
-                    response = client.chat.completions.create(
-                        model="gpt-4o",
-                        messages=[
-                            {
-                                "role": "user",
-                                "content": [
-                                    {
-                                        "type": "text",
-                                        "text": "Please identify all the food ingredients, items, and products you can see in this image. List them as a comma-separated list. Focus on ingredients that could be used for cooking. Include fresh produce, packaged goods, dairy products, meats, spices, condiments, etc. Be specific about types (e.g., 'red bell peppers' instead of just 'peppers'). Only list food items that are clearly visible and identifiable."
-                                    },
-                                    {
-                                        "type": "image_url",
-                                        "image_url": {
-                                            "url": f"data:image/jpeg;base64,{base64_image}"
-                                        }
-                                    }
-                                ]
-                            }
-                        ],
-                        max_tokens=500
-                    )
-                    
-                    # Store identified ingredients in session state
-                    st.session_state.identified_ingredients = response.choices[0].message.content
-                    
-                    st.success("✅ Ingredients identified!")
-                    
+                    combined_ingredients = analyze_multiple_images(all_photos)
+                    st.session_state.all_identified_ingredients = combined_ingredients
+                    st.success("✅ All ingredients identified and combined!")
                 except Exception as e:
-                    st.error(f"Error analyzing image: {e}")
+                    st.error(f"Error analyzing images: {e}")
     
     # Display and allow editing of identified ingredients
-    if st.session_state.identified_ingredients:
-        st.subheader("📝 Identified Ingredients")
+    if st.session_state.all_identified_ingredients:
+        st.subheader("📝 Identified Ingredients from All Photos")
         
         # Editable text area with identified ingredients
         photo_ingredients = st.text_area(
             "Review and edit the ingredients I found:",
-            value=st.session_state.identified_ingredients,
+            value=st.session_state.all_identified_ingredients,
             height=120,
             help="You can add, remove, or modify any ingredients before generating a recipe"
         )
@@ -574,7 +684,7 @@ with tab3:
         )
         
         # Generate recipe button
-        if st.button("🍳 Generate Recipe from Photo", key="photo_recipe"):
+        if st.button("🍳 Generate Recipe from Photos", key="photo_recipe"):
             if not photo_ingredients.strip():
                 st.warning("Please make sure there are ingredients listed above!")
             else:
@@ -596,7 +706,7 @@ with tab3:
                 if photo_low_carb: photo_dietary_restrictions.append("low-carb")
                 if photo_low_sodium: photo_dietary_restrictions.append("low-sodium")
                 
-                prompt = f"Based on these ingredients I have from my photo: {photo_ingredients}. "
+                prompt = f"Based on these ingredients I have from my {len(all_photos)} photos: {photo_ingredients}. "
                 prompt += f"Please suggest a {photo_complexity.lower()} {photo_meal_type.lower()} recipe for {photo_portion_size} that is {time_mapping[photo_cooking_time]}"
                 
                 if photo_cooking_method != "Any method":
@@ -623,12 +733,12 @@ with tab3:
                 if photo_allow_additional:
                     prompt += ". You can suggest recipes that use most of these ingredients and may require a few common pantry staples (like oil, salt, pepper, basic spices) that most people have."
                 else:
-                    prompt += ". Please try to use primarily the ingredients I've identified from my photo."
+                    prompt += ". Please try to use primarily the ingredients I've identified from my photos."
                 
                 if photo_instructions:
                     prompt += f" Also consider: {photo_instructions}"
                 
-                prompt += " Include a complete ingredient list (highlighting what I already have from the photo vs. what I might need to get) and step-by-step cooking instructions."
+                prompt += " Include a complete ingredient list (highlighting what I already have from the photos vs. what I might need to get) and step-by-step cooking instructions."
 
                 # Make request to OpenAI
                 try:
@@ -649,7 +759,7 @@ with tab3:
         
         # Display recipe if it exists in session state
         if st.session_state.photo_recipe_content:
-            st.markdown("### 📸 Recipe Based on Your Photo")
+            st.markdown("### 📸 Recipe Based on Your Photos")
             st.write(st.session_state.photo_recipe_content)
             
             # Add shopping list generation for photo recipes
@@ -665,11 +775,13 @@ with tab3:
                 st.write(st.session_state.photo_shopping_list)
     
     else:
-        st.info("👆 Take a photo of your ingredients to get started!")
+        st.info("👆 Take photos or upload images of your ingredients to get started!")
         st.markdown("""
         **Tips for better ingredient identification:**
         - Make sure ingredients are well-lit and clearly visible
         - Try to capture labels on packaged items
         - Spread items out so they're not overlapping
-        - Take the photo from a good angle where items are recognizable
+        - Take photos from good angles where items are recognizable
+        - You can take multiple photos of different areas (fridge, pantry, countertop, etc.)
+        - Upload multiple photos if you have images saved on your device
         """)
