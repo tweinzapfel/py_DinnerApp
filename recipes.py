@@ -219,24 +219,29 @@ with tab1:
                     {"role": "user", "content": prompt}
                 ]
             )
-            st.markdown("### Suggested Recipe")
             recipe_content = response.choices[0].message.content
             st.session_state.cuisine_recipe_content = recipe_content
-            st.write(recipe_content)
-            
-            # Add shopping list generation
-            st.markdown("---")
-            if st.button("🛒 Generate Shopping List", key="cuisine_shopping_list_btn"):
-                with st.spinner("Creating your shopping list..."):
-                    shopping_list = generate_shopping_list(recipe_content)
-                    st.session_state.cuisine_shopping_list = shopping_list
-            
-            # Display shopping list if it exists
-            if st.session_state.cuisine_shopping_list:
-                st.markdown("### 🛒 Smart Shopping List")
-                st.write(st.session_state.cuisine_shopping_list)
+            # Clear shopping list when new recipe is generated
+            st.session_state.cuisine_shopping_list = ""
         except Exception as e:
             st.error(f"An error occurred: {e}")
+    
+    # Display recipe if it exists in session state
+    if st.session_state.cuisine_recipe_content:
+        st.markdown("### Suggested Recipe")
+        st.write(st.session_state.cuisine_recipe_content)
+        
+        # Add shopping list generation
+        st.markdown("---")
+        if st.button("🛒 Generate Shopping List", key="cuisine_shopping_list_btn"):
+            with st.spinner("Creating your shopping list..."):
+                shopping_list = generate_shopping_list(st.session_state.cuisine_recipe_content)
+                st.session_state.cuisine_shopping_list = shopping_list
+        
+        # Display shopping list if it exists
+        if st.session_state.cuisine_shopping_list:
+            st.markdown("### 🛒 Smart Shopping List")
+            st.write(st.session_state.cuisine_shopping_list)
 
 with tab2:
     st.header("Find Recipe by What's in Your Fridge")
@@ -391,24 +396,31 @@ with tab2:
                         {"role": "user", "content": prompt}
                     ]
                 )
-                st.markdown("### Recipe Based on Your Ingredients")
                 recipe_content = response.choices[0].message.content
                 st.session_state.fridge_recipe_content = recipe_content
-                st.write(recipe_content)
-                
-                # Add shopping list generation for fridge recipes
-                st.markdown("---")
-                if st.button("🛒 Generate Shopping List", key="fridge_shopping_list_btn"):
-                    with st.spinner("Creating your shopping list..."):
-                        shopping_list = generate_shopping_list(recipe_content, fridge_items)
-                        st.session_state.fridge_shopping_list = shopping_list
-                
-                # Display shopping list if it exists
-                if st.session_state.fridge_shopping_list:
-                    st.markdown("### 🛒 Smart Shopping List")
-                    st.write(st.session_state.fridge_shopping_list)
+                # Clear shopping list when new recipe is generated
+                st.session_state.fridge_shopping_list = ""
             except Exception as e:
                 st.error(f"An error occurred: {e}")
+    
+    # Display recipe if it exists in session state
+    if st.session_state.fridge_recipe_content:
+        st.markdown("### Recipe Based on Your Ingredients")
+        st.write(st.session_state.fridge_recipe_content)
+        
+        # Add shopping list generation for fridge recipes
+        st.markdown("---")
+        if st.button("🛒 Generate Shopping List", key="fridge_shopping_list_btn"):
+            with st.spinner("Creating your shopping list..."):
+                # Get the current fridge items from the text area
+                current_fridge_items = st.session_state.get('fridge_items_current', fridge_items)
+                shopping_list = generate_shopping_list(st.session_state.fridge_recipe_content, current_fridge_items)
+                st.session_state.fridge_shopping_list = shopping_list
+        
+        # Display shopping list if it exists
+        if st.session_state.fridge_shopping_list:
+            st.markdown("### 🛒 Smart Shopping List")
+            st.write(st.session_state.fridge_shopping_list)
 
 with tab3:
     st.header("Photo Recipe Finder")
@@ -624,24 +636,29 @@ with tab3:
                                 {"role": "user", "content": prompt}
                             ]
                         )
-                        st.markdown("### 📸 Recipe Based on Your Photo")
                         recipe_content = response.choices[0].message.content
                         st.session_state.photo_recipe_content = recipe_content
-                        st.write(recipe_content)
-                        
-                        # Add shopping list generation for photo recipes
-                        st.markdown("---")
-                        if st.button("🛒 Generate Shopping List", key="photo_shopping_list_btn"):
-                            with st.spinner("Creating your shopping list..."):
-                                shopping_list = generate_shopping_list(recipe_content, photo_ingredients)
-                                st.session_state.photo_shopping_list = shopping_list
-                        
-                        # Display shopping list if it exists
-                        if st.session_state.photo_shopping_list:
-                            st.markdown("### 🛒 Smart Shopping List")
-                            st.write(st.session_state.photo_shopping_list)
+                        # Clear shopping list when new recipe is generated
+                        st.session_state.photo_shopping_list = ""
                 except Exception as e:
                     st.error(f"An error occurred while generating the recipe: {e}")
+        
+        # Display recipe if it exists in session state
+        if st.session_state.photo_recipe_content:
+            st.markdown("### 📸 Recipe Based on Your Photo")
+            st.write(st.session_state.photo_recipe_content)
+            
+            # Add shopping list generation for photo recipes
+            st.markdown("---")
+            if st.button("🛒 Generate Shopping List", key="photo_shopping_list_btn"):
+                with st.spinner("Creating your shopping list..."):
+                    shopping_list = generate_shopping_list(st.session_state.photo_recipe_content, photo_ingredients)
+                    st.session_state.photo_shopping_list = shopping_list
+            
+            # Display shopping list if it exists
+            if st.session_state.photo_shopping_list:
+                st.markdown("### 🛒 Smart Shopping List")
+                st.write(st.session_state.photo_shopping_list)
     
     else:
         st.info("👆 Take a photo of your ingredients to get started!")
