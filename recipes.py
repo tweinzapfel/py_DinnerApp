@@ -20,6 +20,10 @@ if 'fridge_recipe_content' not in st.session_state:
     st.session_state.fridge_recipe_content = ""
 if 'photo_recipe_content' not in st.session_state:
     st.session_state.photo_recipe_content = ""
+if 'uploaded_photos' not in st.session_state:
+    st.session_state.uploaded_photos = []
+if 'all_identified_ingredients' not in st.session_state:
+    st.session_state.all_identified_ingredients = ""
 
 headers = {
     "authorization": st.secrets["api_key"],
