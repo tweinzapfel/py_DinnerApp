@@ -5,6 +5,22 @@ import base64
 from PIL import Image
 import io
 
+# Initialize session state variables at the very beginning
+if 'identified_ingredients' not in st.session_state:
+    st.session_state.identified_ingredients = ""
+if 'cuisine_shopping_list' not in st.session_state:
+    st.session_state.cuisine_shopping_list = ""
+if 'fridge_shopping_list' not in st.session_state:
+    st.session_state.fridge_shopping_list = ""
+if 'photo_shopping_list' not in st.session_state:
+    st.session_state.photo_shopping_list = ""
+if 'cuisine_recipe_content' not in st.session_state:
+    st.session_state.cuisine_recipe_content = ""
+if 'fridge_recipe_content' not in st.session_state:
+    st.session_state.fridge_recipe_content = ""
+if 'photo_recipe_content' not in st.session_state:
+    st.session_state.photo_recipe_content = ""
+
 headers = {
     "authorization": st.secrets["api_key"],
     "content-type": "application/json"
