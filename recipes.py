@@ -4,6 +4,11 @@ import os
 import base64
 from PIL import Image
 import io
+import time
+
+# Rate limiting configuration
+MAX_REQUESTS = 20        # limit to 20 requests
+WINDOW_SECONDS = 300     # per 300 seconds (5 minutes)
 
 # Initialize session state variables at the very beginning
 if 'identified_ingredients' not in st.session_state:
@@ -24,6 +29,12 @@ if 'uploaded_photos' not in st.session_state:
     st.session_state.uploaded_photos = []
 if 'all_identified_ingredients' not in st.session_state:
     st.session_state.all_identified_ingredients = ""
+if 'camera_photos' not in st.session_state:
+    st.session_state.camera_photos = []
+if 'uploaded_file_photos' not in st.session_state:
+    st.session_state.uploaded_file_photos = []
+if "request_times" not in st.session_state:
+    st.session_state.request_times = []
 
 headers = {
     "authorization": st.secrets["api_key"],
@@ -32,6 +43,38 @@ headers = {
 
 # Set your OpenAI API key (make sure it's in your environment variables or you can paste it here for testing)
 client = OpenAI(api_key=st.secrets["api_key"])
+
+# Rate limiting function
+def check_rate_limit():
+    """Check if the user has exceeded the rate limit"""
+    now = time.time()
+    # Keep only recent requests in the window
+    st.session_state.request_times = [
+        t for t in st.session_state.request_times if now - t < WINDOW_SECONDS
+    ]
+    
+    if len(st.session_state.request_times) >= MAX_REQUESTS:
+        return False
+    
+    st.session_state.request_times.append(now)
+    return True
+
+def get_remaining_requests():
+    """Get the number of remaining requests in the current window"""
+    now = time.time()
+    st.session_state.request_times = [
+        t for t in st.session_state.request_times if now - t < WINDOW_SECONDS
+    ]
+    return MAX_REQUESTS - len(st.session_state.request_times)
+
+def get_time_until_reset():
+    """Get the time until the oldest request expires"""
+    if not st.session_state.request_times:
+        return 0
+    now = time.time()
+    oldest_request = min(st.session_state.request_times)
+    time_until_reset = WINDOW_SECONDS - (now - oldest_request)
+    return max(0, time_until_reset)
 
 # Function to encode image to base64
 def encode_image(image):
@@ -45,6 +88,14 @@ def analyze_multiple_images(images):
     all_ingredients = []
     
     for i, image in enumerate(images):
+        # Check rate limit for each image
+        if not check_rate_limit():
+            remaining_time = int(get_time_until_reset())
+            st.error(f"⛔ Rate limit reached. Please wait {remaining_time} seconds before analyzing more images.")
+            if i > 0:
+                st.warning(f"Processed {i} out of {len(images)} images before hitting rate limit.")
+            return None
+        
         try:
             # Encode image to base64
             base64_image = encode_image(image)
@@ -81,6 +132,13 @@ def analyze_multiple_images(images):
     
     # Combine and deduplicate ingredients
     if all_ingredients:
+        # Check rate limit before combining
+        if not check_rate_limit():
+            remaining_time = int(get_time_until_reset())
+            st.error(f"⛔ Rate limit reached. Please wait {remaining_time} seconds.")
+            # Return raw ingredients if we can't combine them
+            return ", ".join(all_ingredients)
+        
         combined_prompt = f"""
         I have identified ingredients from {len(images)} different images:
         
@@ -108,6 +166,11 @@ def analyze_multiple_images(images):
 
 # Function to generate shopping list from recipe
 def generate_shopping_list(recipe_text, available_ingredients=""):
+    # Check rate limit
+    if not check_rate_limit():
+        remaining_time = int(get_time_until_reset())
+        return f"⛔ Rate limit reached. Please wait {remaining_time} seconds before generating a shopping list."
+    
     try:
         prompt = f"""
         Based on this recipe: {recipe_text}
@@ -156,6 +219,19 @@ def generate_shopping_list(recipe_text, available_ingredients=""):
 
 # Streamlit UI
 st.title("Dinner Recipe Maker")
+
+# Display rate limit info in sidebar
+with st.sidebar:
+    st.subheader("📊 API Usage")
+    remaining = get_remaining_requests()
+    st.metric("Requests Remaining", f"{remaining}/{MAX_REQUESTS}")
+    
+    if remaining < MAX_REQUESTS:
+        time_until_reset = int(get_time_until_reset())
+        st.caption(f"Resets in: {time_until_reset // 60}m {time_until_reset % 60}s")
+    
+    st.divider()
+    st.caption(f"Limit: {MAX_REQUESTS} requests per {WINDOW_SECONDS // 60} minutes")
 
 # Add tabs for different recipe modes
 tab1, tab2, tab3 = st.tabs(["Recipe by Cuisine", "Recipe by Fridge Items", "Photo Recipe Finder"])
@@ -243,59 +319,66 @@ with tab1:
 
     # Submit button
     if st.button("Suggest Recipe", key="cuisine_recipe"):
-        # Build dietary restrictions list
-        dietary_restrictions = []
-        if vegetarian: dietary_restrictions.append("vegetarian")
-        if vegan: dietary_restrictions.append("vegan")
-        if gluten_free: dietary_restrictions.append("gluten-free")
-        if dairy_free: dietary_restrictions.append("dairy-free")
-        if keto: dietary_restrictions.append("keto")
-        if paleo: dietary_restrictions.append("paleo")
-        if low_carb: dietary_restrictions.append("low-carb")
-        if low_sodium: dietary_restrictions.append("low-sodium")
-        
-        prompt = f"Suggest a {complexity.lower()} {cuisine.lower()} {meal_type.lower()} recipe for {portion_size}"
-        
-        if cooking_method != "Any method":
-            method_mapping = {
-                "One-pot/One-pan": "one-pot or one-pan",
-                "Slow cooker": "slow cooker",
-                "Air fryer": "air fryer",
-                "Instant Pot/Pressure cooker": "Instant Pot or pressure cooker",
-                "Oven/Baking": "oven-baked",
-                "Stovetop": "stovetop",
-                "Grilling": "grilled",
-                "No-cook/Raw": "no-cook",
-                "Microwave": "microwave"
-            }
-            prompt += f" using {method_mapping[cooking_method]}"
-        
-        if dietary_restrictions:
-            prompt += f" that is {', '.join(dietary_restrictions)}"
-        
-        if allergies:
-            allergy_list = ', '.join([allergy.lower() for allergy in allergies])
-            prompt += f". Avoid these allergens: {allergy_list}"
-        
-        if instructions:
-            prompt += f". Also, consider this: {instructions}"
-        prompt += ". Include ingredients and step-by-step instructions."
+        # Check rate limit
+        if not check_rate_limit():
+            remaining_time = int(get_time_until_reset())
+            st.error(f"⛔ Rate limit reached. You can make {MAX_REQUESTS} requests per {WINDOW_SECONDS // 60} minutes. Please wait {remaining_time} seconds before trying again.")
+        else:
+            # Build dietary restrictions list
+            dietary_restrictions = []
+            if vegetarian: dietary_restrictions.append("vegetarian")
+            if vegan: dietary_restrictions.append("vegan")
+            if gluten_free: dietary_restrictions.append("gluten-free")
+            if dairy_free: dietary_restrictions.append("dairy-free")
+            if keto: dietary_restrictions.append("keto")
+            if paleo: dietary_restrictions.append("paleo")
+            if low_carb: dietary_restrictions.append("low-carb")
+            if low_sodium: dietary_restrictions.append("low-sodium")
+            
+            prompt = f"Suggest a {complexity.lower()} {cuisine.lower()} {meal_type.lower()} recipe for {portion_size}"
+            
+            if cooking_method != "Any method":
+                method_mapping = {
+                    "One-pot/One-pan": "one-pot or one-pan",
+                    "Slow cooker": "slow cooker",
+                    "Air fryer": "air fryer",
+                    "Instant Pot/Pressure cooker": "Instant Pot or pressure cooker",
+                    "Oven/Baking": "oven-baked",
+                    "Stovetop": "stovetop",
+                    "Grilling": "grilled",
+                    "No-cook/Raw": "no-cook",
+                    "Microwave": "microwave"
+                }
+                prompt += f" using {method_mapping[cooking_method]}"
+            
+            if dietary_restrictions:
+                prompt += f" that is {', '.join(dietary_restrictions)}"
+            
+            if allergies:
+                allergy_list = ', '.join([allergy.lower() for allergy in allergies])
+                prompt += f". Avoid these allergens: {allergy_list}"
+            
+            if instructions:
+                prompt += f". Also, consider this: {instructions}"
+            prompt += ". Include ingredients and step-by-step instructions."
 
-        # Make request to OpenAI
-        try:
-            response = client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": "You are a helpful chef assistant."},
-                    {"role": "user", "content": prompt}
-                ]
-            )
-            recipe_content = response.choices[0].message.content
-            st.session_state.cuisine_recipe_content = recipe_content
-            # Clear shopping list when new recipe is generated
-            st.session_state.cuisine_shopping_list = ""
-        except Exception as e:
-            st.error(f"An error occurred: {e}")
+            # Make request to OpenAI
+            try:
+                with st.spinner("Generating your recipe..."):
+                    response = client.chat.completions.create(
+                        model="gpt-3.5-turbo",
+                        messages=[
+                            {"role": "system", "content": "You are a helpful chef assistant."},
+                            {"role": "user", "content": prompt}
+                        ]
+                    )
+                    recipe_content = response.choices[0].message.content
+                    st.session_state.cuisine_recipe_content = recipe_content
+                    # Clear shopping list when new recipe is generated
+                    st.session_state.cuisine_shopping_list = ""
+                    st.success("✅ Recipe generated successfully!")
+            except Exception as e:
+                st.error(f"An error occurred: {e}")
     
     # Display recipe if it exists in session state
     if st.session_state.cuisine_recipe_content:
@@ -405,6 +488,9 @@ with tab2:
     if st.button("Find Recipe with My Ingredients", key="fridge_recipe"):
         if not fridge_items.strip():
             st.warning("Please enter at least some ingredients from your fridge!")
+        elif not check_rate_limit():
+            remaining_time = int(get_time_until_reset())
+            st.error(f"⛔ Rate limit reached. You can make {MAX_REQUESTS} requests per {WINDOW_SECONDS // 60} minutes. Please wait {remaining_time} seconds before trying again.")
         else:
             # Build prompt for fridge-based recipe
             time_mapping = {
@@ -460,17 +546,19 @@ with tab2:
 
             # Make request to OpenAI
             try:
-                response = client.chat.completions.create(
-                    model="gpt-3.5-turbo",
-                    messages=[
-                        {"role": "system", "content": "You are a helpful chef assistant who specializes in creating recipes based on available ingredients. Always clearly indicate which ingredients the user already has vs. which they might need to purchase."},
-                        {"role": "user", "content": prompt}
-                    ]
-                )
-                recipe_content = response.choices[0].message.content
-                st.session_state.fridge_recipe_content = recipe_content
-                # Clear shopping list when new recipe is generated
-                st.session_state.fridge_shopping_list = ""
+                with st.spinner("Generating your recipe..."):
+                    response = client.chat.completions.create(
+                        model="gpt-3.5-turbo",
+                        messages=[
+                            {"role": "system", "content": "You are a helpful chef assistant who specializes in creating recipes based on available ingredients. Always clearly indicate which ingredients the user already has vs. which they might need to purchase."},
+                            {"role": "user", "content": prompt}
+                        ]
+                    )
+                    recipe_content = response.choices[0].message.content
+                    st.session_state.fridge_recipe_content = recipe_content
+                    # Clear shopping list when new recipe is generated
+                    st.session_state.fridge_shopping_list = ""
+                    st.success("✅ Recipe generated successfully!")
             except Exception as e:
                 st.error(f"An error occurred: {e}")
     
@@ -496,12 +584,6 @@ with tab2:
 with tab3:
     st.header("Photo Recipe Finder")
     st.write("Take photos or upload images of your fridge, pantry, or ingredients and I'll identify what you have and suggest recipes!")
-    
-    # Initialize session state for photos if not exists
-    if 'camera_photos' not in st.session_state:
-        st.session_state.camera_photos = []
-    if 'uploaded_file_photos' not in st.session_state:
-        st.session_state.uploaded_file_photos = []
     
     # Create two columns for different photo input methods
     col1, col2 = st.columns(2)
@@ -587,8 +669,10 @@ with tab3:
             with st.spinner(f"Analyzing {len(all_photos)} photos..."):
                 try:
                     combined_ingredients = analyze_multiple_images(all_photos)
-                    st.session_state.all_identified_ingredients = combined_ingredients
-                    st.success("✅ All ingredients identified and combined!")
+                    if combined_ingredients is not None:
+                        st.session_state.all_identified_ingredients = combined_ingredients
+                        st.success("✅ All ingredients identified and combined!")
+                    # If None is returned, error message was already displayed by analyze_multiple_images
                 except Exception as e:
                     st.error(f"Error analyzing images: {e}")
     
@@ -687,6 +771,9 @@ with tab3:
         if st.button("🍳 Generate Recipe from Photos", key="photo_recipe"):
             if not photo_ingredients.strip():
                 st.warning("Please make sure there are ingredients listed above!")
+            elif not check_rate_limit():
+                remaining_time = int(get_time_until_reset())
+                st.error(f"⛔ Rate limit reached. You can make {MAX_REQUESTS} requests per {WINDOW_SECONDS // 60} minutes. Please wait {remaining_time} seconds before trying again.")
             else:
                 # Build prompt for photo-based recipe
                 time_mapping = {
@@ -754,6 +841,7 @@ with tab3:
                         st.session_state.photo_recipe_content = recipe_content
                         # Clear shopping list when new recipe is generated
                         st.session_state.photo_shopping_list = ""
+                        st.success("✅ Recipe generated successfully!")
                 except Exception as e:
                     st.error(f"An error occurred while generating the recipe: {e}")
         
