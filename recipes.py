@@ -142,6 +142,126 @@ def generate_recipe_card(recipe_text):
     except Exception as e:
         return f"Error generating recipe card: {e}"
 
+# Function to create HTML for recipe card popup
+def create_recipe_card_html(recipe_card_content):
+    """Convert markdown recipe card to HTML for printing"""
+    # Simple markdown to HTML conversion for printing
+    html_content = recipe_card_content
+    
+    # Convert markdown headers
+    html_content = html_content.replace('# ', '<h1>').replace('\n', '</h1>\n', 1)
+    html_content = html_content.replace('## ', '<h2>').replace('\n', '</h2>\n')
+    
+    # Convert bold text
+    import re
+    html_content = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', html_content)
+    
+    # Convert horizontal rules
+    html_content = html_content.replace('---', '<hr>')
+    
+    # Convert bullet points
+    lines = html_content.split('\n')
+    in_list = False
+    new_lines = []
+    for line in lines:
+        if line.strip().startswith('- '):
+            if not in_list:
+                new_lines.append('<ul>')
+                in_list = True
+            new_lines.append(f'<li>{line.strip()[2:]}</li>')
+        else:
+            if in_list:
+                new_lines.append('</ul>')
+                in_list = False
+            new_lines.append(line)
+    if in_list:
+        new_lines.append('</ul>')
+    
+    html_content = '\n'.join(new_lines)
+    
+    # Convert numbered lists (1. 2. 3.)
+    html_content = re.sub(r'(\d+)\.\s', r'<ol><li>', html_content)
+    html_content = html_content.replace('<ol><li>', '</ol><ol><li>', 1)  # Fix double start
+    html_content = html_content.replace('</li>\n</ol><ol><li>', '</li>\n<li>')
+    html_content += '</ol>'
+    
+    # Basic paragraph handling
+    html_content = html_content.replace('\n\n', '</p><p>')
+    
+    full_html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Recipe Card</title>
+        <style>
+            @media print {{
+                body {{ margin: 1in; }}
+                button {{ display: none; }}
+            }}
+            body {{
+                font-family: 'Georgia', serif;
+                max-width: 800px;
+                margin: 40px auto;
+                padding: 20px;
+                line-height: 1.6;
+                color: #333;
+            }}
+            h1 {{
+                color: #2c5530;
+                border-bottom: 3px solid #2c5530;
+                padding-bottom: 10px;
+                margin-bottom: 20px;
+            }}
+            h2 {{
+                color: #5a7d5e;
+                margin-top: 30px;
+                margin-bottom: 15px;
+                font-size: 1.4em;
+            }}
+            hr {{
+                border: none;
+                border-top: 1px solid #ddd;
+                margin: 20px 0;
+            }}
+            ul, ol {{
+                margin-left: 20px;
+                margin-bottom: 20px;
+            }}
+            li {{
+                margin-bottom: 8px;
+            }}
+            strong {{
+                color: #2c5530;
+            }}
+            .print-button {{
+                background-color: #2c5530;
+                color: white;
+                padding: 12px 24px;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 16px;
+                margin: 20px 0;
+                display: block;
+            }}
+            .print-button:hover {{
+                background-color: #1e3d22;
+            }}
+            @page {{
+                margin: 1in;
+            }}
+        </style>
+    </head>
+    <body>
+        <button class="print-button" onclick="window.print()">🖨️ Print Recipe Card</button>
+        {html_content}
+        <button class="print-button" onclick="window.print()">🖨️ Print Recipe Card</button>
+    </body>
+    </html>
+    """
+    return full_html
+
 # Streamlit UI
 st.title("Dinner Recipe Maker")
 
@@ -313,17 +433,30 @@ with tab1:
         
         # Display recipe card if it exists
         if st.session_state.cuisine_recipe_card:
-            st.markdown("### 🖨️ Print-Friendly Recipe Card")
-            st.info("💡 Tip: Use your browser's print function (Ctrl+P or Cmd+P) to print or save as PDF")
-            st.markdown(st.session_state.cuisine_recipe_card)
+            # Create HTML for the recipe card
+            recipe_html = create_recipe_card_html(st.session_state.cuisine_recipe_card)
             
-            # Add a download button for the recipe card
-            st.download_button(
-                label="📥 Download Recipe Card as Text",
-                data=st.session_state.cuisine_recipe_card,
-                file_name="recipe_card.txt",
-                mime="text/plain",
-                key="download_cuisine_recipe_card"
+            # Encode HTML for data URI
+            import base64
+            b64_html = base64.b64encode(recipe_html.encode()).decode()
+            
+            # Create a link that opens in new window
+            st.markdown(
+                f"""
+                <a href="data:text/html;base64,{b64_html}" target="_blank" style="
+                    display: inline-block;
+                    padding: 10px 20px;
+                    background-color: #2c5530;
+                    color: white;
+                    text-decoration: none;
+                    border-radius: 5px;
+                    font-weight: bold;
+                    margin: 10px 0;
+                ">
+                    🖨️ Open Recipe Card in New Window (Ready to Print)
+                </a>
+                """,
+                unsafe_allow_html=True
             )
 
 with tab2:
@@ -516,17 +649,30 @@ with tab2:
         
         # Display recipe card if it exists
         if st.session_state.fridge_recipe_card:
-            st.markdown("### 🖨️ Print-Friendly Recipe Card")
-            st.info("💡 Tip: Use your browser's print function (Ctrl+P or Cmd+P) to print or save as PDF")
-            st.markdown(st.session_state.fridge_recipe_card)
+            # Create HTML for the recipe card
+            recipe_html = create_recipe_card_html(st.session_state.fridge_recipe_card)
             
-            # Add a download button for the recipe card
-            st.download_button(
-                label="📥 Download Recipe Card as Text",
-                data=st.session_state.fridge_recipe_card,
-                file_name="recipe_card.txt",
-                mime="text/plain",
-                key="download_fridge_recipe_card"
+            # Encode HTML for data URI
+            import base64
+            b64_html = base64.b64encode(recipe_html.encode()).decode()
+            
+            # Create a link that opens in new window
+            st.markdown(
+                f"""
+                <a href="data:text/html;base64,{b64_html}" target="_blank" style="
+                    display: inline-block;
+                    padding: 10px 20px;
+                    background-color: #2c5530;
+                    color: white;
+                    text-decoration: none;
+                    border-radius: 5px;
+                    font-weight: bold;
+                    margin: 10px 0;
+                ">
+                    🖨️ Open Recipe Card in New Window (Ready to Print)
+                </a>
+                """,
+                unsafe_allow_html=True
             )
 
 with tab3:
@@ -755,17 +901,54 @@ with tab3:
             st.markdown("### 📸 Recipe Based on Your Photo")
             st.write(st.session_state.photo_recipe_content)
             
-            # Add shopping list generation for photo recipes
+            # Add shopping list and recipe card generation
             st.markdown("---")
-            if st.button("🛒 Generate Shopping List", key="photo_shopping_list_btn"):
-                with st.spinner("Creating your shopping list..."):
-                    shopping_list = generate_shopping_list(st.session_state.photo_recipe_content, photo_ingredients)
-                    st.session_state.photo_shopping_list = shopping_list
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                if st.button("🛒 Generate Shopping List", key="photo_shopping_list_btn"):
+                    with st.spinner("Creating your shopping list..."):
+                        shopping_list = generate_shopping_list(st.session_state.photo_recipe_content, photo_ingredients)
+                        st.session_state.photo_shopping_list = shopping_list
+            
+            with col2:
+                if st.button("🖨️ Create Recipe Card", key="photo_recipe_card_btn"):
+                    with st.spinner("Creating your recipe card..."):
+                        recipe_card = generate_recipe_card(st.session_state.photo_recipe_content)
+                        st.session_state.photo_recipe_card = recipe_card
             
             # Display shopping list if it exists
             if st.session_state.photo_shopping_list:
                 st.markdown("### 🛒 Smart Shopping List")
                 st.write(st.session_state.photo_shopping_list)
+            
+            # Display recipe card if it exists
+            if st.session_state.photo_recipe_card:
+                # Create HTML for the recipe card
+                recipe_html = create_recipe_card_html(st.session_state.photo_recipe_card)
+                
+                # Encode HTML for data URI
+                import base64
+                b64_html = base64.b64encode(recipe_html.encode()).decode()
+                
+                # Create a link that opens in new window
+                st.markdown(
+                    f"""
+                    <a href="data:text/html;base64,{b64_html}" target="_blank" style="
+                        display: inline-block;
+                        padding: 10px 20px;
+                        background-color: #2c5530;
+                        color: white;
+                        text-decoration: none;
+                        border-radius: 5px;
+                        font-weight: bold;
+                        margin: 10px 0;
+                    ">
+                        🖨️ Open Recipe Card in New Window (Ready to Print)
+                    </a>
+                    """,
+                    unsafe_allow_html=True
+                )
     
     else:
         st.info("👆 Take a photo of your ingredients to get started!")
