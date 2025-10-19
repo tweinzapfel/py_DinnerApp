@@ -145,48 +145,101 @@ def generate_recipe_card(recipe_text):
 # Function to create HTML for recipe card popup
 def create_recipe_card_html(recipe_card_content):
     """Convert markdown recipe card to HTML for printing"""
-    # Simple markdown to HTML conversion for printing
-    html_content = recipe_card_content
-    
-    # Convert markdown headers
-    html_content = html_content.replace('# ', '<h1>').replace('\n', '</h1>\n', 1)
-    html_content = html_content.replace('## ', '<h2>').replace('\n', '</h2>\n')
-    
-    # Convert bold text
     import re
-    html_content = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', html_content)
     
-    # Convert horizontal rules
-    html_content = html_content.replace('---', '<hr>')
+    # Split content into lines for processing
+    lines = recipe_card_content.split('\n')
+    html_lines = []
+    in_unordered_list = False
+    in_ordered_list = False
     
-    # Convert bullet points
-    lines = html_content.split('\n')
-    in_list = False
-    new_lines = []
     for line in lines:
-        if line.strip().startswith('- '):
-            if not in_list:
-                new_lines.append('<ul>')
-                in_list = True
-            new_lines.append(f'<li>{line.strip()[2:]}</li>')
+        stripped = line.strip()
+        
+        # Handle headers
+        if stripped.startswith('# '):
+            if in_unordered_list:
+                html_lines.append('</ul>')
+                in_unordered_list = False
+            if in_ordered_list:
+                html_lines.append('</ol>')
+                in_ordered_list = False
+            html_lines.append(f'<h1>{stripped[2:]}</h1>')
+        elif stripped.startswith('## '):
+            if in_unordered_list:
+                html_lines.append('</ul>')
+                in_unordered_list = False
+            if in_ordered_list:
+                html_lines.append('</ol>')
+                in_ordered_list = False
+            html_lines.append(f'<h2>{stripped[3:]}</h2>')
+        
+        # Handle horizontal rules
+        elif stripped == '---':
+            if in_unordered_list:
+                html_lines.append('</ul>')
+                in_unordered_list = False
+            if in_ordered_list:
+                html_lines.append('</ol>')
+                in_ordered_list = False
+            html_lines.append('<hr>')
+        
+        # Handle unordered list items (bullet points)
+        elif stripped.startswith('- '):
+            if in_ordered_list:
+                html_lines.append('</ol>')
+                in_ordered_list = False
+            if not in_unordered_list:
+                html_lines.append('<ul>')
+                in_unordered_list = True
+            # Convert bold text within list items
+            item_text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', stripped[2:])
+            html_lines.append(f'<li>{item_text}</li>')
+        
+        # Handle ordered list items (numbered)
+        elif re.match(r'^\d+\.\s', stripped):
+            if in_unordered_list:
+                html_lines.append('</ul>')
+                in_unordered_list = False
+            if not in_ordered_list:
+                html_lines.append('<ol>')
+                in_ordered_list = True
+            # Extract the text after the number and period
+            item_text = re.sub(r'^\d+\.\s+', '', stripped)
+            # Convert bold text within list items
+            item_text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', item_text)
+            html_lines.append(f'<li>{item_text}</li>')
+        
+        # Handle empty lines
+        elif stripped == '':
+            if in_unordered_list:
+                html_lines.append('</ul>')
+                in_unordered_list = False
+            if in_ordered_list:
+                html_lines.append('</ol>')
+                in_ordered_list = False
+            html_lines.append('<br>')
+        
+        # Handle regular text
         else:
-            if in_list:
-                new_lines.append('</ul>')
-                in_list = False
-            new_lines.append(line)
-    if in_list:
-        new_lines.append('</ul>')
+            if in_unordered_list:
+                html_lines.append('</ul>')
+                in_unordered_list = False
+            if in_ordered_list:
+                html_lines.append('</ol>')
+                in_ordered_list = False
+            # Convert bold text
+            text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', stripped)
+            if text:
+                html_lines.append(f'<p>{text}</p>')
     
-    html_content = '\n'.join(new_lines)
+    # Close any remaining lists
+    if in_unordered_list:
+        html_lines.append('</ul>')
+    if in_ordered_list:
+        html_lines.append('</ol>')
     
-    # Convert numbered lists (1. 2. 3.)
-    html_content = re.sub(r'(\d+)\.\s', r'<ol><li>', html_content)
-    html_content = html_content.replace('<ol><li>', '</ol><ol><li>', 1)  # Fix double start
-    html_content = html_content.replace('</li>\n</ol><ol><li>', '</li>\n<li>')
-    html_content += '</ol>'
-    
-    # Basic paragraph handling
-    html_content = html_content.replace('\n\n', '</p><p>')
+    html_content = '\n'.join(html_lines)
     
     full_html = f"""
     <!DOCTYPE html>
@@ -224,15 +277,30 @@ def create_recipe_card_html(recipe_card_content):
                 border-top: 1px solid #ddd;
                 margin: 20px 0;
             }}
-            ul, ol {{
+            ul {{
                 margin-left: 20px;
                 margin-bottom: 20px;
+                padding-left: 20px;
             }}
-            li {{
+            ol {{
+                margin-left: 20px;
+                margin-bottom: 20px;
+                padding-left: 20px;
+                counter-reset: item;
+            }}
+            ul li {{
                 margin-bottom: 8px;
+                list-style-type: disc;
+            }}
+            ol li {{
+                margin-bottom: 12px;
+                list-style-type: decimal;
             }}
             strong {{
                 color: #2c5530;
+            }}
+            p {{
+                margin: 10px 0;
             }}
             .print-button {{
                 background-color: #2c5530;
