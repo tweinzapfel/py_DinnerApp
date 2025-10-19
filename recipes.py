@@ -506,14 +506,10 @@ with tab1:
             # Create HTML for the recipe card
             recipe_html = create_recipe_card_html(st.session_state.cuisine_recipe_card)
             
-            # Encode HTML for JavaScript
-            import json
-            recipe_html_escaped = json.dumps(recipe_html)
-            
-            # Create a button that opens the recipe in a new window using JavaScript
-            st.markdown(
+            # Use HTML with onclick to open new window
+            st.components.v1.html(
                 f"""
-                <button onclick="openRecipeCard()" style="
+                <button onclick="openRecipe()" style="
                     display: inline-block;
                     padding: 10px 20px;
                     background-color: #2c5530;
@@ -523,20 +519,20 @@ with tab1:
                     font-weight: bold;
                     cursor: pointer;
                     font-size: 14px;
-                    margin: 10px 0;
                 ">
                     🖨️ Open Recipe Card in New Window (Ready to Print)
                 </button>
                 
                 <script>
-                function openRecipeCard() {{
+                function openRecipe() {{
+                    var recipeHTML = `{recipe_html.replace('`', '\\`')}`;
                     var newWindow = window.open('', '_blank', 'width=900,height=800');
-                    newWindow.document.write({recipe_html_escaped});
+                    newWindow.document.write(recipeHTML);
                     newWindow.document.close();
                 }}
                 </script>
                 """,
-                unsafe_allow_html=True
+                height=60
             )
 
 with tab2:
@@ -732,14 +728,10 @@ with tab2:
             # Create HTML for the recipe card
             recipe_html = create_recipe_card_html(st.session_state.fridge_recipe_card)
             
-            # Encode HTML for JavaScript
-            import json
-            recipe_html_escaped = json.dumps(recipe_html)
-            
-            # Create a button that opens the recipe in a new window using JavaScript
-            st.markdown(
+            # Use HTML with onclick to open new window
+            st.components.v1.html(
                 f"""
-                <button onclick="openRecipeCardFridge()" style="
+                <button onclick="openRecipeFridge()" style="
                     display: inline-block;
                     padding: 10px 20px;
                     background-color: #2c5530;
@@ -749,20 +741,20 @@ with tab2:
                     font-weight: bold;
                     cursor: pointer;
                     font-size: 14px;
-                    margin: 10px 0;
                 ">
                     🖨️ Open Recipe Card in New Window (Ready to Print)
                 </button>
                 
                 <script>
-                function openRecipeCardFridge() {{
+                function openRecipeFridge() {{
+                    var recipeHTML = `{recipe_html.replace('`', '\\`')}`;
                     var newWindow = window.open('', '_blank', 'width=900,height=800');
-                    newWindow.document.write({recipe_html_escaped});
+                    newWindow.document.write(recipeHTML);
                     newWindow.document.close();
                 }}
                 </script>
                 """,
-                unsafe_allow_html=True
+                height=60
             )
 
 with tab3:
@@ -1017,14 +1009,10 @@ with tab3:
                 # Create HTML for the recipe card
                 recipe_html = create_recipe_card_html(st.session_state.photo_recipe_card)
                 
-                # Encode HTML for JavaScript
-                import json
-                recipe_html_escaped = json.dumps(recipe_html)
-                
-                # Create a button that opens the recipe in a new window using JavaScript
-                st.markdown(
+                # Use HTML with onclick to open new window
+                st.components.v1.html(
                     f"""
-                    <button onclick="openRecipeCardPhoto()" style="
+                    <button onclick="openRecipePhoto()" style="
                         display: inline-block;
                         padding: 10px 20px;
                         background-color: #2c5530;
@@ -1034,20 +1022,20 @@ with tab3:
                         font-weight: bold;
                         cursor: pointer;
                         font-size: 14px;
-                        margin: 10px 0;
                     ">
                         🖨️ Open Recipe Card in New Window (Ready to Print)
                     </button>
                     
                     <script>
-                    function openRecipeCardPhoto() {{
+                    function openRecipePhoto() {{
+                        var recipeHTML = `{recipe_html.replace('`', '\\`')}`;
                         var newWindow = window.open('', '_blank', 'width=900,height=800');
-                        newWindow.document.write({recipe_html_escaped});
+                        newWindow.document.write(recipeHTML);
                         newWindow.document.close();
                     }}
                     </script>
                     """,
-                    unsafe_allow_html=True
+                    height=60
                 )
     
     else:
