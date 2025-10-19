@@ -4,6 +4,7 @@ import os
 import base64
 from PIL import Image
 import io
+from datetime import datetime, date
 
 # Initialize session state variables at the very beginning
 if 'identified_ingredients' not in st.session_state:
@@ -44,6 +45,53 @@ def encode_image(image):
     buffered = io.BytesIO()
     image.save(buffered, format="JPEG")
     return base64.b64encode(buffered.getvalue()).decode()
+
+# Function to get current holiday or special occasion
+def get_current_holiday():
+    """Determine if there's a current or upcoming holiday/special occasion"""
+    today = date.today()
+    month = today.month
+    day = today.day
+    
+    # Define holidays and special occasions with date ranges (month, start_day, end_day, name, description)
+    holidays = [
+        (1, 1, 1, "New Year's Day", "New Year's celebration recipes"),
+        (1, 13, 20, "Martin Luther King Jr. Day Weekend", "comfort food and soul food"),
+        (2, 1, 14, "Valentine's Day", "romantic dinners and desserts"),
+        (2, 15, 28, "Black History Month", "soul food and African-American cuisine"),
+        (3, 1, 17, "St. Patrick's Day", "Irish-inspired dishes"),
+        (3, 18, 31, "Spring Season", "fresh spring vegetables and lighter dishes"),
+        (4, 1, 30, "Easter Season", "spring brunch and Easter dinner recipes"),
+        (5, 1, 15, "Cinco de Mayo", "Mexican-inspired celebration food"),
+        (5, 20, 31, "Memorial Day Weekend", "BBQ and grilling recipes"),
+        (6, 1, 21, "Father's Day", "hearty grilling and favorite comfort foods"),
+        (6, 22, 30, "Summer Season", "light summer meals and grilling"),
+        (7, 1, 4, "Independence Day", "BBQ, picnic, and patriotic recipes"),
+        (7, 5, 31, "Summer Grilling Season", "outdoor cooking and fresh salads"),
+        (8, 1, 31, "Late Summer", "fresh produce and outdoor dining"),
+        (9, 1, 22, "Labor Day Weekend", "BBQ and end-of-summer gatherings"),
+        (9, 23, 30, "Fall Season", "autumn harvest and comfort food"),
+        (10, 1, 31, "Halloween & Fall Harvest", "pumpkin, apple, and festive fall recipes"),
+        (11, 1, 15, "Thanksgiving Prep", "Thanksgiving sides and preparations"),
+        (11, 16, 30, "Thanksgiving", "traditional Thanksgiving feast recipes"),
+        (12, 1, 24, "Christmas & Holiday Season", "festive holiday meals and cookies"),
+        (12, 25, 31, "Christmas & New Year's", "holiday leftovers and party food"),
+    ]
+    
+    # Check if today falls within any holiday period
+    for hol_month, start_day, end_day, holiday_name, description in holidays:
+        if month == hol_month and start_day <= day <= end_day:
+            return holiday_name, description
+    
+    # Default seasonal return
+    if month in [12, 1, 2]:
+        return "Winter Season", "warming winter comfort foods"
+    elif month in [3, 4, 5]:
+        return "Spring Season", "fresh spring vegetables and lighter dishes"
+    elif month in [6, 7, 8]:
+        return "Summer Season", "light summer meals and grilling"
+    else:
+        return "Fall Season", "autumn harvest and comfort food"
 
 # Function to generate shopping list from recipe
 def generate_shopping_list(recipe_text, available_ingredients=""):
@@ -335,8 +383,17 @@ def create_recipe_card_html(recipe_card_content):
 # Streamlit UI
 st.title("Dinner Recipe Maker")
 
+# Get current holiday/occasion
+holiday_name, holiday_desc = get_current_holiday()
+
+# Display holiday banner if applicable
+if holiday_name and "Season" not in holiday_name:
+    st.info(f"🎉 **{holiday_name}!** Perfect time for {holiday_desc}. Check out our special occasion recipes below!")
+elif holiday_name:
+    st.success(f"🍂 **{holiday_name}** - Great time for {holiday_desc}")
+
 # Add tabs for different recipe modes
-tab1, tab2, tab3 = st.tabs(["Recipe by Cuisine", "Recipe by Fridge Items", "Photo Recipe Finder"])
+tab1, tab2, tab3, tab4 = st.tabs(["Recipe by Cuisine", "Recipe by Fridge Items", "Photo Recipe Finder", "🎉 Holiday & Special Occasions"])
 
 with tab1:
     st.header("Find Recipe by Cuisine & Preferences")
@@ -1047,3 +1104,244 @@ with tab3:
         - Spread items out so they're not overlapping
         - Take the photo from a good angle where items are recognizable
         """)
+
+with tab4:
+    st.header("🎉 Holiday & Special Occasion Recipes")
+    
+    # Display current holiday
+    st.markdown(f"### Currently: **{holiday_name}**")
+    st.write(f"*{holiday_desc.capitalize()}*")
+    
+    st.markdown("---")
+    
+    # Holiday selector
+    st.subheader("Choose Your Holiday or Occasion")
+    
+    occasion = st.selectbox(
+        "Select a holiday or special occasion:",
+        [
+            "Current Holiday/Season (Recommended)",
+            "New Year's Day",
+            "Valentine's Day",
+            "St. Patrick's Day",
+            "Easter",
+            "Cinco de Mayo",
+            "Mother's Day",
+            "Father's Day",
+            "Independence Day (4th of July)",
+            "Labor Day",
+            "Halloween",
+            "Thanksgiving",
+            "Christmas",
+            "Hanukkah",
+            "New Year's Eve",
+            "Birthday Party",
+            "Baby Shower",
+            "Bridal Shower",
+            "Wedding Reception",
+            "Graduation Party",
+            "Game Day/Super Bowl",
+            "Picnic",
+            "Potluck Dinner"
+        ]
+    )
+    
+    # If current holiday is selected, use the detected one
+    if occasion == "Current Holiday/Season (Recommended)":
+        selected_occasion = holiday_name
+    else:
+        selected_occasion = occasion
+    
+    # Recipe type for occasions
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        occasion_meal_type = st.selectbox(
+            "What type of dish?",
+            ["Main Course", "Appetizer/Starter", "Side Dish", "Dessert", "Cocktail/Beverage", "Full Menu"],
+            key="occasion_meal_type"
+        )
+        
+        occasion_complexity = st.selectbox(
+            "Cooking complexity:",
+            ["Easy", "Medium", "Hard", "Show-stopping (Impressive)"],
+            key="occasion_complexity"
+        )
+    
+    with col2:
+        occasion_serving_style = st.selectbox(
+            "Serving style:",
+            ["Family-style", "Plated/Individual", "Buffet", "Appetizer bites", "Cocktail party"],
+            key="occasion_serving_style"
+        )
+        
+        occasion_portion_size = st.selectbox(
+            "How many guests?",
+            ["2 people", "4-6 people", "8-10 people", "12-15 people", "Large party (20+ people)"],
+            key="occasion_portion_size"
+        )
+    
+    # Special requirements for occasions
+    st.subheader("Special Requirements")
+    
+    col3, col4 = st.columns(2)
+    
+    with col3:
+        make_ahead = st.checkbox("Can be made ahead of time", value=False)
+        crowd_pleaser = st.checkbox("Crowd-pleaser (appeals to most tastes)", value=True)
+        budget_friendly = st.checkbox("Budget-friendly", value=False)
+    
+    with col4:
+        impressive = st.checkbox("Visually impressive presentation", value=False)
+        traditional = st.checkbox("Traditional/Classic recipe", value=False)
+        modern_twist = st.checkbox("Modern twist on classic", value=False)
+    
+    # Dietary restrictions for holiday recipes
+    st.subheader("Dietary Preferences")
+    col5, col6 = st.columns(2)
+    
+    with col5:
+        occasion_vegetarian = st.checkbox("Vegetarian", key="occasion_vegetarian")
+        occasion_vegan = st.checkbox("Vegan", key="occasion_vegan")
+        occasion_gluten_free = st.checkbox("Gluten-free", key="occasion_gluten_free")
+        occasion_dairy_free = st.checkbox("Dairy-free", key="occasion_dairy_free")
+    
+    with col6:
+        occasion_keto = st.checkbox("Keto", key="occasion_keto")
+        occasion_paleo = st.checkbox("Paleo", key="occasion_paleo")
+        occasion_low_carb = st.checkbox("Low-carb", key="occasion_low_carb")
+        occasion_nut_free = st.checkbox("Nut-free", key="occasion_nut_free")
+    
+    # Additional preferences
+    occasion_notes = st.text_area(
+        "Any special requests or theme?",
+        placeholder="e.g., 'elegant and sophisticated', 'fun for kids', 'Southern-style', 'comfort food'",
+        key="occasion_notes"
+    )
+    
+    # Generate holiday recipe
+    if st.button("🎉 Get Holiday Recipe Suggestions", key="occasion_recipe_btn"):
+        # Build the prompt
+        occasion_dietary_restrictions = []
+        if occasion_vegetarian: occasion_dietary_restrictions.append("vegetarian")
+        if occasion_vegan: occasion_dietary_restrictions.append("vegan")
+        if occasion_gluten_free: occasion_dietary_restrictions.append("gluten-free")
+        if occasion_dairy_free: occasion_dietary_restrictions.append("dairy-free")
+        if occasion_keto: occasion_dietary_restrictions.append("keto")
+        if occasion_paleo: occasion_dietary_restrictions.append("paleo")
+        if occasion_low_carb: occasion_dietary_restrictions.append("low-carb")
+        if occasion_nut_free: occasion_dietary_restrictions.append("nut-free")
+        
+        special_reqs = []
+        if make_ahead: special_reqs.append("can be made ahead of time")
+        if crowd_pleaser: special_reqs.append("crowd-pleaser that appeals to most tastes")
+        if budget_friendly: special_reqs.append("budget-friendly")
+        if impressive: special_reqs.append("visually impressive presentation")
+        if traditional: special_reqs.append("traditional/classic recipe")
+        if modern_twist: special_reqs.append("modern twist on a classic")
+        
+        prompt = f"Suggest a {occasion_complexity.lower()} {occasion_meal_type.lower()} recipe perfect for {selected_occasion} "
+        prompt += f"serving {occasion_portion_size} in a {occasion_serving_style.lower()} style. "
+        
+        if occasion_dietary_restrictions:
+            prompt += f"The recipe should be {', '.join(occasion_dietary_restrictions)}. "
+        
+        if special_reqs:
+            prompt += f"Important: The recipe should be {', '.join(special_reqs)}. "
+        
+        if occasion_notes:
+            prompt += f"Additional theme/request: {occasion_notes}. "
+        
+        prompt += f"Make sure the recipe is festive and appropriate for {selected_occasion}. "
+        prompt += "Include a brief introduction explaining why this recipe is perfect for the occasion, "
+        prompt += "then provide the full ingredient list and step-by-step instructions. "
+        
+        if make_ahead:
+            prompt += "Include make-ahead instructions and timeline. "
+        
+        if impressive:
+            prompt += "Include plating/presentation suggestions. "
+        
+        # Make request to OpenAI
+        try:
+            with st.spinner(f"Creating the perfect recipe for {selected_occasion}..."):
+                response = client.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=[
+                        {"role": "system", "content": f"You are a helpful chef assistant who specializes in creating festive recipes for holidays and special occasions. You understand the traditions and flavors associated with {selected_occasion}."},
+                        {"role": "user", "content": prompt}
+                    ]
+                )
+                st.session_state.occasion_recipe_content = response.choices[0].message.content
+                # Clear shopping list and recipe card when new recipe is generated
+                st.session_state.occasion_shopping_list = ""
+                st.session_state.occasion_recipe_card = ""
+        except Exception as e:
+            st.error(f"An error occurred: {e}")
+    
+    # Display holiday recipe if it exists
+    if 'occasion_recipe_content' not in st.session_state:
+        st.session_state.occasion_recipe_content = ""
+    if 'occasion_shopping_list' not in st.session_state:
+        st.session_state.occasion_shopping_list = ""
+    if 'occasion_recipe_card' not in st.session_state:
+        st.session_state.occasion_recipe_card = ""
+    
+    if st.session_state.occasion_recipe_content:
+        st.markdown(f"### 🎉 {selected_occasion} Recipe")
+        st.write(st.session_state.occasion_recipe_content)
+        
+        # Add shopping list and recipe card generation
+        st.markdown("---")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if st.button("🛒 Generate Shopping List", key="occasion_shopping_list_btn"):
+                with st.spinner("Creating your shopping list..."):
+                    shopping_list = generate_shopping_list(st.session_state.occasion_recipe_content)
+                    st.session_state.occasion_shopping_list = shopping_list
+        
+        with col2:
+            if st.button("🖨️ Create Recipe Card", key="occasion_recipe_card_btn"):
+                with st.spinner("Creating your recipe card..."):
+                    recipe_card = generate_recipe_card(st.session_state.occasion_recipe_content)
+                    st.session_state.occasion_recipe_card = recipe_card
+        
+        # Display shopping list if it exists
+        if st.session_state.occasion_shopping_list:
+            st.markdown("### 🛒 Smart Shopping List")
+            st.write(st.session_state.occasion_shopping_list)
+        
+        # Display recipe card if it exists
+        if st.session_state.occasion_recipe_card:
+            # Create HTML for the recipe card
+            recipe_html = create_recipe_card_html(st.session_state.occasion_recipe_card)
+            
+            # Use HTML with onclick to open new window
+            st.components.v1.html(
+                f"""
+                <button onclick="openRecipeOccasion()" style="
+                    display: inline-block;
+                    padding: 10px 20px;
+                    background-color: #2c5530;
+                    color: white;
+                    border: none;
+                    border-radius: 5px;
+                    font-weight: bold;
+                    cursor: pointer;
+                    font-size: 14px;
+                ">
+                    🖨️ Open Recipe Card in New Window (Ready to Print)
+                </button>
+                
+                <script>
+                function openRecipeOccasion() {{
+                    var recipeHTML = `{recipe_html.replace('`', '\\`')}`;
+                    var newWindow = window.open('', '_blank', 'width=900,height=800');
+                    newWindow.document.write(recipeHTML);
+                    newWindow.document.close();
+                }}
+                </script>
+                """,
+                height=60
+            )
