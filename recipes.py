@@ -31,6 +31,14 @@ if 'fridge_recipe_card' not in st.session_state:
     st.session_state.fridge_recipe_card = ""
 if 'photo_recipe_card' not in st.session_state:
     st.session_state.photo_recipe_card = ""
+if 'cuisine_recipe_image' not in st.session_state:
+    st.session_state.cuisine_recipe_image = ""
+if 'fridge_recipe_image' not in st.session_state:
+    st.session_state.fridge_recipe_image = ""
+if 'photo_recipe_image' not in st.session_state:
+    st.session_state.photo_recipe_image = ""
+if 'occasion_recipe_image' not in st.session_state:
+    st.session_state.occasion_recipe_image = ""
 
 headers = {
     "authorization": st.secrets["api_key"],
@@ -92,6 +100,38 @@ def get_current_holiday():
         return "Summer Season", "light summer meals and grilling"
     else:
         return "Fall Season", "autumn harvest and comfort food"
+
+# Function to generate recipe image using DALL-E
+def generate_recipe_image(recipe_text):
+    """Generate a beautiful image of the recipe using DALL-E"""
+    try:
+        # Extract recipe name from the text (usually at the beginning)
+        lines = recipe_text.split('\n')
+        recipe_name = "delicious meal"
+        
+        # Try to find the recipe name in the first few lines
+        for line in lines[:5]:
+            if line.strip() and not line.startswith('#') and len(line.strip()) > 5:
+                recipe_name = line.strip()
+                break
+        
+        # Create a descriptive prompt for DALL-E
+        image_prompt = f"A beautiful, appetizing photograph of {recipe_name}, professionally plated on a clean white plate with garnish, restaurant-quality food photography, well-lit, vibrant colors, shallow depth of field"
+        
+        # Generate image using DALL-E
+        response = client.images.generate(
+            model="dall-e-3",
+            prompt=image_prompt,
+            size="1024x1024",
+            quality="standard",
+            n=1,
+        )
+        
+        # Return the image URL
+        return response.data[0].url
+        
+    except Exception as e:
+        return f"Error generating image: {e}"
 
 # Function to generate shopping list from recipe
 def generate_shopping_list(recipe_text, available_ingredients=""):
@@ -539,7 +579,7 @@ with tab1:
         
         # Add shopping list and recipe card generation
         st.markdown("---")
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
         
         with col1:
             if st.button("🛒 Generate Shopping List", key="cuisine_shopping_list_btn"):
@@ -552,6 +592,19 @@ with tab1:
                 with st.spinner("Creating your recipe card..."):
                     recipe_card = generate_recipe_card(st.session_state.cuisine_recipe_content)
                     st.session_state.cuisine_recipe_card = recipe_card
+        
+        with col3:
+            if st.button("📸 Generate Recipe Image", key="cuisine_image_btn"):
+                with st.spinner("Creating a beautiful image of your recipe... This may take a moment."):
+                    image_url = generate_recipe_image(st.session_state.cuisine_recipe_content)
+                    st.session_state.cuisine_recipe_image = image_url
+        
+        # Display recipe image if it exists
+        if st.session_state.cuisine_recipe_image and not st.session_state.cuisine_recipe_image.startswith("Error"):
+            st.markdown("### 📸 Recipe Image")
+            st.image(st.session_state.cuisine_recipe_image, caption="AI-Generated Recipe Image", width=400)
+        elif st.session_state.cuisine_recipe_image.startswith("Error"):
+            st.error(st.session_state.cuisine_recipe_image)
         
         # Display shopping list if it exists
         if st.session_state.cuisine_shopping_list:
@@ -759,7 +812,7 @@ with tab2:
         
         # Add shopping list and recipe card generation
         st.markdown("---")
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
         
         with col1:
             if st.button("🛒 Generate Shopping List", key="fridge_shopping_list_btn"):
@@ -774,6 +827,19 @@ with tab2:
                 with st.spinner("Creating your recipe card..."):
                     recipe_card = generate_recipe_card(st.session_state.fridge_recipe_content)
                     st.session_state.fridge_recipe_card = recipe_card
+        
+        with col3:
+            if st.button("📸 Generate Recipe Image", key="fridge_image_btn"):
+                with st.spinner("Creating a beautiful image of your recipe... This may take a moment."):
+                    image_url = generate_recipe_image(st.session_state.fridge_recipe_content)
+                    st.session_state.fridge_recipe_image = image_url
+        
+        # Display recipe image if it exists
+        if st.session_state.fridge_recipe_image and not st.session_state.fridge_recipe_image.startswith("Error"):
+            st.markdown("### 📸 Recipe Image")
+            st.image(st.session_state.fridge_recipe_image, caption="AI-Generated Recipe Image", width=400)
+        elif st.session_state.fridge_recipe_image.startswith("Error"):
+            st.error(st.session_state.fridge_recipe_image)
         
         # Display shopping list if it exists
         if st.session_state.fridge_shopping_list:
@@ -1042,7 +1108,7 @@ with tab3:
             
             # Add shopping list and recipe card generation
             st.markdown("---")
-            col1, col2 = st.columns(2)
+            col1, col2, col3 = st.columns(3)
             
             with col1:
                 if st.button("🛒 Generate Shopping List", key="photo_shopping_list_btn"):
@@ -1055,6 +1121,19 @@ with tab3:
                     with st.spinner("Creating your recipe card..."):
                         recipe_card = generate_recipe_card(st.session_state.photo_recipe_content)
                         st.session_state.photo_recipe_card = recipe_card
+            
+            with col3:
+                if st.button("📸 Generate Recipe Image", key="photo_image_btn"):
+                    with st.spinner("Creating a beautiful image of your recipe... This may take a moment."):
+                        image_url = generate_recipe_image(st.session_state.photo_recipe_content)
+                        st.session_state.photo_recipe_image = image_url
+            
+            # Display recipe image if it exists
+            if st.session_state.photo_recipe_image and not st.session_state.photo_recipe_image.startswith("Error"):
+                st.markdown("### 📸 Recipe Image")
+                st.image(st.session_state.photo_recipe_image, caption="AI-Generated Recipe Image", width=400)
+            elif st.session_state.photo_recipe_image.startswith("Error"):
+                st.error(st.session_state.photo_recipe_image)
             
             # Display shopping list if it exists
             if st.session_state.photo_shopping_list:
@@ -1293,7 +1372,7 @@ with tab4:
         
         # Add shopping list and recipe card generation
         st.markdown("---")
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
         
         with col1:
             if st.button("🛒 Generate Shopping List", key="occasion_shopping_list_btn"):
@@ -1306,6 +1385,19 @@ with tab4:
                 with st.spinner("Creating your recipe card..."):
                     recipe_card = generate_recipe_card(st.session_state.occasion_recipe_content)
                     st.session_state.occasion_recipe_card = recipe_card
+        
+        with col3:
+            if st.button("📸 Generate Recipe Image", key="occasion_image_btn"):
+                with st.spinner("Creating a beautiful image of your recipe... This may take a moment."):
+                    image_url = generate_recipe_image(st.session_state.occasion_recipe_content)
+                    st.session_state.occasion_recipe_image = image_url
+        
+        # Display recipe image if it exists
+        if st.session_state.occasion_recipe_image and not st.session_state.occasion_recipe_image.startswith("Error"):
+            st.markdown("### 📸 Recipe Image")
+            st.image(st.session_state.occasion_recipe_image, caption="AI-Generated Recipe Image", width=400)
+        elif st.session_state.occasion_recipe_image.startswith("Error"):
+            st.error(st.session_state.occasion_recipe_image)
         
         # Display shopping list if it exists
         if st.session_state.occasion_shopping_list:
