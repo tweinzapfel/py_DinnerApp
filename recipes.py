@@ -506,25 +506,35 @@ with tab1:
             # Create HTML for the recipe card
             recipe_html = create_recipe_card_html(st.session_state.cuisine_recipe_card)
             
-            # Encode HTML for data URI
-            import base64
-            b64_html = base64.b64encode(recipe_html.encode()).decode()
+            # Encode HTML for JavaScript
+            import json
+            recipe_html_escaped = json.dumps(recipe_html)
             
-            # Create a link that opens in new window
+            # Create a button that opens the recipe in a new window using JavaScript
             st.markdown(
                 f"""
-                <a href="data:text/html;base64,{b64_html}" target="_blank" style="
+                <button onclick="openRecipeCard()" style="
                     display: inline-block;
                     padding: 10px 20px;
                     background-color: #2c5530;
                     color: white;
-                    text-decoration: none;
+                    border: none;
                     border-radius: 5px;
                     font-weight: bold;
+                    cursor: pointer;
+                    font-size: 14px;
                     margin: 10px 0;
                 ">
                     🖨️ Open Recipe Card in New Window (Ready to Print)
-                </a>
+                </button>
+                
+                <script>
+                function openRecipeCard() {{
+                    var newWindow = window.open('', '_blank', 'width=900,height=800');
+                    newWindow.document.write({recipe_html_escaped});
+                    newWindow.document.close();
+                }}
+                </script>
                 """,
                 unsafe_allow_html=True
             )
@@ -722,25 +732,35 @@ with tab2:
             # Create HTML for the recipe card
             recipe_html = create_recipe_card_html(st.session_state.fridge_recipe_card)
             
-            # Encode HTML for data URI
-            import base64
-            b64_html = base64.b64encode(recipe_html.encode()).decode()
+            # Encode HTML for JavaScript
+            import json
+            recipe_html_escaped = json.dumps(recipe_html)
             
-            # Create a link that opens in new window
+            # Create a button that opens the recipe in a new window using JavaScript
             st.markdown(
                 f"""
-                <a href="data:text/html;base64,{b64_html}" target="_blank" style="
+                <button onclick="openRecipeCardFridge()" style="
                     display: inline-block;
                     padding: 10px 20px;
                     background-color: #2c5530;
                     color: white;
-                    text-decoration: none;
+                    border: none;
                     border-radius: 5px;
                     font-weight: bold;
+                    cursor: pointer;
+                    font-size: 14px;
                     margin: 10px 0;
                 ">
                     🖨️ Open Recipe Card in New Window (Ready to Print)
-                </a>
+                </button>
+                
+                <script>
+                function openRecipeCardFridge() {{
+                    var newWindow = window.open('', '_blank', 'width=900,height=800');
+                    newWindow.document.write({recipe_html_escaped});
+                    newWindow.document.close();
+                }}
+                </script>
                 """,
                 unsafe_allow_html=True
             )
@@ -997,25 +1017,35 @@ with tab3:
                 # Create HTML for the recipe card
                 recipe_html = create_recipe_card_html(st.session_state.photo_recipe_card)
                 
-                # Encode HTML for data URI
-                import base64
-                b64_html = base64.b64encode(recipe_html.encode()).decode()
+                # Encode HTML for JavaScript
+                import json
+                recipe_html_escaped = json.dumps(recipe_html)
                 
-                # Create a link that opens in new window
+                # Create a button that opens the recipe in a new window using JavaScript
                 st.markdown(
                     f"""
-                    <a href="data:text/html;base64,{b64_html}" target="_blank" style="
+                    <button onclick="openRecipeCardPhoto()" style="
                         display: inline-block;
                         padding: 10px 20px;
                         background-color: #2c5530;
                         color: white;
-                        text-decoration: none;
+                        border: none;
                         border-radius: 5px;
                         font-weight: bold;
+                        cursor: pointer;
+                        font-size: 14px;
                         margin: 10px 0;
                     ">
                         🖨️ Open Recipe Card in New Window (Ready to Print)
-                    </a>
+                    </button>
+                    
+                    <script>
+                    function openRecipeCardPhoto() {{
+                        var newWindow = window.open('', '_blank', 'width=900,height=800');
+                        newWindow.document.write({recipe_html_escaped});
+                        newWindow.document.close();
+                    }}
+                    </script>
                     """,
                     unsafe_allow_html=True
                 )
