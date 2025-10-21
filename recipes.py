@@ -460,12 +460,14 @@ with tab1:
         vegan = st.checkbox("Vegan")
         gluten_free = st.checkbox("Gluten-free")
         dairy_free = st.checkbox("Dairy-free")
+        high_fiber = st.checkbox("High fiber")
     
     with col2:
         keto = st.checkbox("Keto")
         paleo = st.checkbox("Paleo")
         low_carb = st.checkbox("Low-carb")
         low_sodium = st.checkbox("Low-sodium")
+        high_protein = st.checkbox("High protein")
     
     # Allergy restrictions
     allergies = st.multiselect(
@@ -488,6 +490,8 @@ with tab1:
         if paleo: dietary_restrictions.append("paleo")
         if low_carb: dietary_restrictions.append("low-carb")
         if low_sodium: dietary_restrictions.append("low-sodium")
+        if high_fiber: dietary_restrictions.append("high-fiber")
+        if high_protein: dietary_restrictions.append("high-protein")
         
         prompt = f"Suggest a {complexity.lower()} {cuisine.lower()} {meal_type.lower()} recipe for {portion_size}"
         
@@ -659,12 +663,14 @@ with tab2:
         fridge_vegan = st.checkbox("Vegan", key="fridge_vegan")
         fridge_gluten_free = st.checkbox("Gluten-free", key="fridge_gluten_free")
         fridge_dairy_free = st.checkbox("Dairy-free", key="fridge_dairy_free")
+        fridge_high_fiber = st.checkbox("High fiber", key="fridge_high_fiber")
     
     with col4:
         fridge_keto = st.checkbox("Keto", key="fridge_keto")
         fridge_paleo = st.checkbox("Paleo", key="fridge_paleo")
         fridge_low_carb = st.checkbox("Low-carb", key="fridge_low_carb")
         fridge_low_sodium = st.checkbox("Low-sodium", key="fridge_low_sodium")
+        fridge_high_protein = st.checkbox("High protein", key="fridge_high_protein")
     
     # Allergy restrictions for fridge mode
     fridge_allergies = st.multiselect(
@@ -701,6 +707,8 @@ with tab2:
             if fridge_paleo: fridge_dietary_restrictions.append("paleo")
             if fridge_low_carb: fridge_dietary_restrictions.append("low-carb")
             if fridge_low_sodium: fridge_dietary_restrictions.append("low-sodium")
+            if fridge_high_fiber: fridge_dietary_restrictions.append("high-fiber")
+            if fridge_high_protein: fridge_dietary_restrictions.append("high-protein")
             
             prompt = f"I have these ingredients available: {fridge_items}. "
             prompt += f"Please suggest a {fridge_complexity.lower()} {fridge_meal_type.lower()} recipe for {fridge_portion_size} that is {time_mapping[cooking_time]}"
@@ -941,12 +949,14 @@ with tab3:
             photo_vegan = st.checkbox("Vegan", key="photo_vegan")
             photo_gluten_free = st.checkbox("Gluten-free", key="photo_gluten_free")
             photo_dairy_free = st.checkbox("Dairy-free", key="photo_dairy_free")
+            photo_high_fiber = st.checkbox("High fiber", key="photo_high_fiber")
         
         with col6:
             photo_keto = st.checkbox("Keto", key="photo_keto")
             photo_paleo = st.checkbox("Paleo", key="photo_paleo")
             photo_low_carb = st.checkbox("Low-carb", key="photo_low_carb")
             photo_low_sodium = st.checkbox("Low-sodium", key="photo_low_sodium")
+            photo_high_protein = st.checkbox("High protein", key="photo_high_protein")
         
         # Allergy restrictions for photo mode
         photo_allergies = st.multiselect(
@@ -983,6 +993,8 @@ with tab3:
                 if photo_paleo: photo_dietary_restrictions.append("paleo")
                 if photo_low_carb: photo_dietary_restrictions.append("low-carb")
                 if photo_low_sodium: photo_dietary_restrictions.append("low-sodium")
+                if photo_high_fiber: photo_dietary_restrictions.append("high-fiber")
+                if photo_high_protein: photo_dietary_restrictions.append("high-protein")
                 
                 prompt = f"Based on these ingredients I have from my photo: {photo_ingredients}. "
                 prompt += f"Please suggest a {photo_complexity.lower()} {photo_meal_type.lower()} recipe for {photo_portion_size} that is {time_mapping[photo_cooking_time]}"
@@ -1205,12 +1217,14 @@ with tab4:
         occasion_vegan = st.checkbox("Vegan", key="occasion_vegan")
         occasion_gluten_free = st.checkbox("Gluten-free", key="occasion_gluten_free")
         occasion_dairy_free = st.checkbox("Dairy-free", key="occasion_dairy_free")
+        occasion_high_fiber = st.checkbox("High fiber", key="occasion_high_fiber")
     
     with col6:
         occasion_keto = st.checkbox("Keto", key="occasion_keto")
         occasion_paleo = st.checkbox("Paleo", key="occasion_paleo")
         occasion_low_carb = st.checkbox("Low-carb", key="occasion_low_carb")
         occasion_nut_free = st.checkbox("Nut-free", key="occasion_nut_free")
+        occasion_high_protein = st.checkbox("High protein", key="occasion_high_protein")
     
     # Additional preferences
     occasion_notes = st.text_area(
@@ -1231,6 +1245,8 @@ with tab4:
         if occasion_paleo: occasion_dietary_restrictions.append("paleo")
         if occasion_low_carb: occasion_dietary_restrictions.append("low-carb")
         if occasion_nut_free: occasion_dietary_restrictions.append("nut-free")
+        if occasion_high_fiber: occasion_dietary_restrictions.append("high-fiber")
+        if occasion_high_protein: occasion_dietary_restrictions.append("high-protein")
         
         special_reqs = []
         if make_ahead: special_reqs.append("can be made ahead of time")
